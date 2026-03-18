@@ -6,8 +6,6 @@ import Dashboard from './pages/Dashboard';
 import CreateOrderPage from './pages/CreateOrderPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import ProfilePage from './pages/ProfilePage';
-// Importar setup de cuenta por defecto (se ejecuta una vez)
-import './services/SetupDefaultAccount';
 
 const App: React.FC = () => {
   return (

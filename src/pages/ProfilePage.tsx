@@ -8,6 +8,7 @@ const ProfilePage: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -21,6 +22,7 @@ const ProfilePage: React.FC = () => {
     setName(AuthService.getClientName() || '');
     setEmail(AuthService.getClientEmail() || '');
     setPhone(AuthService.getClientPhone() || '');
+    setAddress(AuthService.getClientAddress() || '');
   }, [navigate]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -39,7 +41,8 @@ const ProfilePage: React.FC = () => {
 
       const success = await AuthService.updateProfile(clientId, {
         name,
-        phone
+        phone,
+        address
       });
 
       if (success) {
@@ -202,10 +205,29 @@ const ProfilePage: React.FC = () => {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              required
+             required
               style={inputStyle}
               placeholder="492 123 4567"
             />
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={labelStyle}>
+              Dirección de entrega habitual
+            </label>
+            <textarea
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              style={{ ...inputStyle, minHeight: '80px' }}
+              placeholder="Calle, número, colonia, ciudad, código postal..."
+            />
+            <p style={{
+              fontSize: '0.75rem',
+             color: '#6b7280',
+              marginTop: '0.25rem'
+            }}>
+              ℹ️ Esta dirección se usará para rellenar automáticamente tus pedidos
+            </p>
           </div>
 
           {message && (

@@ -10,7 +10,7 @@ class AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
     }
-    return AuthService.instance;
+   return AuthService.instance;
   }
 
   // Registrar cliente
@@ -44,31 +44,34 @@ class AuthService {
   // Login cliente
   async login(email: string, password: string): Promise<boolean> {
     try {
-      const clientsRef = ref(database, 'clients');
-      const snapshot = await get(clientsRef);
+     const clientsRef = ref(database, 'clients');
+     const snapshot = await get(clientsRef);
 
       if (!snapshot.exists()) {
-        return false;
+       return false;
       }
 
-      const clients = snapshot.val();
-      const clientFound = Object.values(clients as any).find((client: any) => 
-        client.email === email && client.password === password
+     const clients = snapshot.val();
+     const clientFound = Object.values(clients as any).find((client: any) => 
+       client.email === email && client.password === password
       );
 
       if (clientFound) {
-        const client = clientFound as any;
+       const client = clientFound as any;
         localStorage.setItem('clientId', client.id);
         localStorage.setItem('clientEmail', client.email);
         localStorage.setItem('clientName', client.name);
         localStorage.setItem('clientPhone', client.phone);
-        return true;
+        if (client.address) localStorage.setItem('clientAddress', client.address);
+        if (client.latitude) localStorage.setItem('clientLatitude', client.latitude.toString());
+        if (client.longitude) localStorage.setItem('clientLongitude', client.longitude.toString());
+       return true;
       }
 
-      return false;
+     return false;
     } catch (error) {
-      console.error('Error logging in:', error);
-      return false;
+     console.error('Error logging in:', error);
+     return false;
     }
   }
 
@@ -78,6 +81,9 @@ class AuthService {
     localStorage.removeItem('clientEmail');
     localStorage.removeItem('clientName');
     localStorage.removeItem('clientPhone');
+    localStorage.removeItem('clientAddress');
+    localStorage.removeItem('clientLatitude');
+    localStorage.removeItem('clientLongitude');
   }
 
   // Verificar si está autenticado
@@ -102,13 +108,30 @@ class AuthService {
 
   // Obtener teléfono del cliente
   getClientPhone(): string | null {
-    return localStorage.getItem('clientPhone');
+   return localStorage.getItem('clientPhone');
+  }
+
+  // Obtener dirección del cliente
+  getClientAddress(): string | null {
+   return localStorage.getItem('clientAddress');
+  }
+
+  // Obtener latitud del cliente
+  getClientLatitude(): number | null {
+   const lat = localStorage.getItem('clientLatitude');
+   return lat ? parseFloat(lat) : null;
+  }
+
+  // Obtener longitud del cliente
+  getClientLongitude(): number | null {
+   const lng = localStorage.getItem('clientLongitude');
+   return lng ? parseFloat(lng) : null;
   }
 
   // Actualizar perfil
-  async updateProfile(clientId: string, data: { name?: string; phone?: string; address?: string }): Promise<boolean> {
+  async updateProfile(clientId: string, data: { name?: string; phone?: string; address?: string; latitude?: number; longitude?: number }): Promise<boolean> {
     try {
-      const clientRef = ref(database, `clients/${clientId}`);
+     const clientRef = ref(database, `clients/${clientId}`);
       await set(clientRef, {
         ...data,
         id: clientId,
@@ -117,11 +140,14 @@ class AuthService {
       
       if (data.name) localStorage.setItem('clientName', data.name);
       if (data.phone) localStorage.setItem('clientPhone', data.phone);
+      if (data.address) localStorage.setItem('clientAddress', data.address);
+      if (data.latitude !== undefined) localStorage.setItem('clientLatitude', data.latitude.toString());
+      if (data.longitude !== undefined) localStorage.setItem('clientLongitude', data.longitude.toString());
       
-      return true;
+     return true;
     } catch (error) {
-      console.error('Error updating profile:', error);
-      return false;
+     console.error('Error updating profile:', error);
+     return false;
     }
   }
 }

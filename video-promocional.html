@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Entrega - Video Promocional</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-container {
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 9/16;
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            position: relative;
+            border: 8px solid #333;
+        }
+
+        .scene {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .scene.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scene 1 - Intro */
+        .scene-1 {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .logo-text {
+            font-size: 42px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            animation: bounceIn 1s;
+        }
+
+        .tagline {
+            font-size: 18px;
+            margin-top: 15px;
+            opacity: 0.9;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Scene 2 - Services */
+        .scene-2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .service-item {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.5s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .service-emoji {
+            font-size: 36px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .service-name {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scene 3 - Registration */
+        .scene-3 {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .phone-mockup {
+            width: 260px;
+            height: 500px;
+            background: white;
+            border-radius: 30px;
+            border: 6px solid #333;
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .screen-header {
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 25px 25px 0 0;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .form-field {
+            background: #f5f5f5;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .btn-register {
+            background: #4CAF50;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 15px;
+            cursor: pointer;
+        }
+
+        /* Scene 4 - Create Order */
+        .scene-4 {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        }
+
+        .order-form {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            max-width: 320px;
+        }
+
+        .form-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-label {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .input-value {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        /* Scene 5 - Calculation */
+        .scene-5 {
+            background: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%);
+            color: white;
+        }
+
+        .calculation-box {
+            background: rgba(255,255,255,0.95);
+            padding: 25px;
+            border-radius: 15px;
+            color: #333;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            max-width: 300px;
+        }
+
+        .calc-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 14px;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .calc-total {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        /* Scene 6 - Tracking */
+        .scene-6 {
+            background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+        }
+
+        .timeline {
+            position: relative;
+            padding: 20px;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            animation: slideRight 0.5s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .timeline-icon {
+            width: 45px;
+            height: 45px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-right: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .timeline-text {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .timeline-time {
+            font-size: 12px;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        @keyframes slideRight {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Scene 7 - CTA */
+        .scene-7 {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .cta-title {
+            font-size: 42px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .cta-url {
+            font-size: 18px;
+            background: white;
+            color: #4CAF50;
+            padding: 12px 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .qr-placeholder {
+            width: 150px;
+            height: 150px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: rgba(255,255,255,0.5);
+            transition: width 0.1s linear;
+        }
+
+        .scene-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.9);
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+            color: #333;
+            font-size: 12px;
+        }
+
+        /* Botón de Descarga HD */
+        .btn-download-hd {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Botón Descargar Imágenes */
+        .btn-download-images {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download-images.visible {
+            transform: translateX(-50%) scale(1);
+        }
+
+        .btn-download-images:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        .btn-download-hd.visible {
+            transform: translateX(-50%) scale(1);
+        }
+
+        .btn-download-hd:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.5);
+        }
+
+        .btn-download-hd:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .btn-download-hd svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .qr-permanent {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: 10px;
+            padding: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .qr-image {
+            width: 100px;
+            height: 100px;
+            background: url('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://cliente-web-mu.vercel.app/inicio') center/contain no-repeat;
+        }
+
+        .qr-text {
+            font-size: 10px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        /* Flechas de navegación táctil - Ocultas por defecto */
+        .nav-arrows {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .nav-arrow {
+            width: 50px;
+            height: 50px;
+            background: rgba(76, 175, 80, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .nav-arrow:hover {
+            background: #4CAF50;
+            transform: scale(1.1);
+        }
+
+        .nav-arrow:active {
+            transform: scale(0.95);
+        }
+
+        .nav-arrow svg {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+
+        .controls {
+            display: none;
+        }
+
+        .btn-control {
+            background: rgba(255,255,255,0.9);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .btn-control:hover {
+            background: white;
+        }
+
+        .scene-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <!-- Scene 1: Intro -->
+        <div class="scene scene-1 active" data-duration="5000">
+            <div class="logo-text">🚚 CLICK ENTREGA</div>
+            <div class="tagline">Tu solución rápida y segura</div>
+        </div>
+
+        <!-- Scene 2: Services -->
+        <div class="scene scene-2" data-duration="5000">
+            <h1 style="font-size: 42px; margin-bottom: 20px;">¿Qué necesitas hoy?</h1>
+            <div class="services-grid">
+                <div class="service-item" style="animation-delay: 0.1s">
+                    <span class="service-emoji">🍔</span>
+                    <span class="service-name">Comida</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.2s">
+                    <span class="service-emoji">⛽</span>
+                    <span class="service-name">Gasolina</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.3s">
+                    <span class="service-emoji">📝</span>
+                    <span class="service-name">Papelería</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.4s">
+                    <span class="service-emoji">💊</span>
+                    <span class="service-name">Medicamentos</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.5s">
+                    <span class="service-emoji">🍺</span>
+                    <span class="service-name">Cervezas</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.6s">
+                    <span class="service-emoji">💧</span>
+                    <span class="service-name">Agua</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.7s">
+                    <span class="service-emoji">🔥</span>
+                    <span class="service-name">Gas</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.8s">
+                    <span class="service-emoji">📦</span>
+                    <span class="service-name">Pagos</span>
+                </div>
+                <div class="service-item" style="animation-delay: 0.9s">
+                    <span class="service-emoji">🎁</span>
+                    <span class="service-name">Favores</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scene 3: Registration -->
+        <div class="scene scene-3" data-duration="5000">
+            <h1 style="font-size: 42px; color: #333; margin-bottom: 30px;">Regístrate en segundos</h1>
+            <div class="phone-mockup">
+                <div class="screen-header">Crear Cuenta</div>
+                <div class="form-field">📧 Email: usuario@email.com</div>
+                <div class="form-field">📱 Teléfono: 555-123-4567</div>
+                <div class="form-field">🔐 Contraseña: ••••••••</div>
+                <button class="btn-register">✓ REGISTRARSE</button>
+            </div>
+        </div>
+
+        <!-- Scene 4: Create Order -->
+        <div class="scene scene-4" data-duration="5000">
+            <h1 style="font-size: 42px; color: #333; margin-bottom: 30px;">Pide lo que quieras</h1>
+            <div class="order-form">
+                <div class="form-title">🍔 Pedido de Comida</div>
+                <div class="input-group">
+                    <div class="input-label">Dirección de entrega:</div>
+                    <div class="input-value">📍 Av. Principal #123, Centro</div>
+                </div>
+                <div class="input-group">
+                    <div class="input-label">Restaurante:</div>
+                    <div class="input-value">🍕 Pizza Hut - Av. Juárez</div>
+                </div>
+                <div class="input-group">
+                    <div class="input-label">Producto:</div>
+                    <div class="input-value">Pizza Familiar + Refresco</div>
+                </div>
+                <div class="input-group">
+                    <div class="input-label">Teléfono:</div>
+                    <div class="input-value">📞 555-987-6543</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scene 4b: Examples of Services -->
+        <div class="scene scene-4b" data-duration="5000">
+            <h1 style="font-size: 42px; color: #333; margin-bottom: 20px;">Ejemplos de Pedidos</h1>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 600px;">
+                <!-- Gasolina -->
+                <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: slideUp 0.5s ease-out;">
+                    <div style="font-size: 40px; margin-bottom: 10px;">⛽</div>
+                    <div style="font-weight: bold; color: #333; margin-bottom: 8px;">Gasolina</div>
+                    <div style="font-size: 12px; color: #666;">📍 Magna Sin Plomo<br>💵 $200 pesos<br>🏠 Estación Shell</div>
+                </div>
+
+                <!-- Medicamento -->
+                <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: slideUp 0.5s ease-out 0.1s; animation-fill-mode: both;">
+                    <div style="font-size: 40px; margin-bottom: 10px;">💊</div>
+                    <div style="font-weight: bold; color: #333; margin-bottom: 8px;">Medicamento</div>
+                    <div style="font-size: 12px; color: #666;">📍 Paracetamol 500mg<br>💵 $85 pesos<br>🏠 Farmacia Guadalajara</div>
+                </div>
+
+                <!-- Gas -->
+                <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: slideUp 0.5s ease-out 0.2s; animation-fill-mode: both;">
+                    <div style="font-size: 40px; margin-bottom: 10px;">🔥</div>
+                    <div style="font-weight: bold; color: #333; margin-bottom: 8px;">Garrafón de Gas</div>
+                    <div style="font-size: 12px; color: #666;">📍 Garrafón 20kg<br>💵 $380 pesos<br>🏠 Gas Fenosa</div>
+                </div>
+
+                <!-- Favores -->
+                <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: slideUp 0.5s ease-out 0.3s; animation-fill-mode: both;">
+                    <div style="font-size: 40px; margin-bottom: 10px;">🎁</div>
+                    <div style="font-weight: bold; color: #333; margin-bottom: 8px;">Favores</div>
+                    <div style="font-size: 12px; color: #666;">📍 Regalo cumpleaños<br>💵 $250 pesos<br>🏠 Soriana</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scene 5: Calculation -->
+        <div class="scene scene-5" data-duration="5000">
+            <h1 style="font-size: 42px; margin-bottom: 30px;">Costo Transparente</h1>
+            <div class="calculation-box">
+                <div class="calc-row">
+                    <span>📏 Distancia:</span>
+                    <span>5.2 km</span>
+                </div>
+                <div class="calc-row">
+                    <span>💵 Base:</span>
+                    <span>$15.00</span>
+                </div>
+                <div class="calc-row">
+                    <span>🛣️ Kilometraje ($8/km):</span>
+                    <span>$41.60</span>
+                </div>
+                <div class="calc-total">
+                    TOTAL: $56.60
+                </div>
+                <p style="text-align: center; margin-top: 20px; color: #666;">
+                    ¡Sin cargos ocultos!
+                </p>
+            </div>
+        </div>
+
+        <!-- Scene 6: Tracking -->
+        <div class="scene scene-6" data-duration="5000">
+            <h1 style="font-size: 42px; color: #333; margin-bottom: 30px;">Sigue tu pedido en tiempo real</h1>
+            <div class="timeline">
+                <div class="timeline-item" style="animation-delay: 0.2s">
+                    <div class="timeline-icon">📝</div>
+                    <div>
+                        <div class="timeline-text">Pedido Creado</div>
+                        <div class="timeline-time">10:30 AM</div>
+                    </div>
+                </div>
+                <div class="timeline-item" style="animation-delay: 0.4s">
+                    <div class="timeline-icon">✅</div>
+                    <div>
+                        <div class="timeline-text">Repartidor Asignado</div>
+                        <div class="timeline-time">10:32 AM</div>
+                    </div>
+                </div>
+                <div class="timeline-item" style="animation-delay: 0.6s">
+                    <div class="timeline-icon">🏍️</div>
+                    <div>
+                        <div class="timeline-text">En Camino</div>
+                        <div class="timeline-time">10:40 AM</div>
+                    </div>
+                </div>
+                <div class="timeline-item" style="animation-delay: 0.8s">
+                    <div class="timeline-icon">🎉</div>
+                    <div>
+                        <div class="timeline-text">¡Entregado!</div>
+                        <div class="timeline-time">10:50 AM</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scene 7: Call to Action -->
+        <div class="scene scene-7" data-duration="5000">
+            <div class="cta-title">¡PIDEL AHORA!</div>
+            <div style="font-size: 28px;">Click Entrega - Repartos Fresnillo</div>
+            <div class="cta-url">cliente-web-mu.vercel.app</div>
+            
+            <!-- QR Grande en Escena 7 -->
+            <div style="background: white; padding: 20px; border-radius: 15px; margin: 20px auto; box-shadow: 0 8px 30px rgba(0,0,0,0.3);">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://cliente-web-mu.vercel.app/inicio" 
+                     alt="QR Code" 
+                     style="width: 250px; height: 250px; display: block; margin: 0 auto;">
+                <div style="text-align: center; margin-top: 15px; font-size: 16px; font-weight: bold; color: #4CAF50;">
+                    ¡ESCANEA PARA ACCEDER AHORA!
+                </div>
+            </div>
+            
+            <div style="font-size: 24px; margin-top: 20px;">⭐⭐⭐⭐⭐<br>Rápido • Seguro • Económico</div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar" id="progressBar"></div>
+
+        <!-- Scene Indicator -->
+        <div class="scene-indicator" id="sceneIndicator">Escena 1/7</div>
+
+        <!-- QR Permanente -->
+        <div class="qr-permanent">
+            <div class="qr-image"></div>
+            <div class="qr-text">¡ESCANEA PARA PEDIR!</div>
+        </div>
+
+        <!-- Botón Descarga HD -->
+        <button class="btn-download-hd" id="btnDownloadHD">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            DESCARGAR VIDEO EN HD
+        </button>
+
+        <!-- Botón Descargar Imágenes -->
+        <button class="btn-download-images" id="btnDownloadImages">
+            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: white;">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            DESCARGAR IMÁGENES (7 ESCENAS)
+        </button>
+
+        <!-- Flechas de Navegación -->
+        <div class="nav-arrows">
+            <div class="nav-arrow" id="btnPrev" title="Anterior">
+                <svg viewBox="0 0 24 24">
+                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                </svg>
+            </div>
+            <div class="nav-arrow" id="btnNext" title="Siguiente">
+                <svg viewBox="0 0 24 24">
+                    <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls" style="display: none;">
+            <button class="btn-download" id="btnDownload" onclick="downloadVideo()">📥 Descargar MP4</button>
+            <button class="btn-control" onclick="restartVideo()">🔄 Reiniciar</button>
+            <button class="btn-control" onclick="togglePause()">⏸️ Pausar</button>
+        </div>
+    </div>
+
+    <script>
+        let currentScene = 0;
+        let scenes = [];
+        let isPaused = false;
+        let sceneStartTime = Date.now();
+        let totalDuration = 0;
+        let recordedFrames = [];
+        let isRecording = false;
+        let mediaRecorder = null;
+        let canvas = null;
+        let ctx = null;
+        let pauseStartTime = 0;
+
+        // Funciones globales para flechas de navegación
+        window.nextScene = function() {
+            console.log('Avanzando escena...');
+            console.log('Escena actual:', currentScene);
+            currentScene = (currentScene + 1) % scenes.length;
+            console.log('Nueva escena:', currentScene);
+            updateScene();
+            sceneStartTime = Date.now();
+            
+            // Mostrar botón de descarga en escena 7
+            if (currentScene === 6) {
+                document.getElementById('btnDownloadHD').classList.add('visible');
+                document.getElementById('btnDownloadImages').classList.add('visible');
+            } else {
+                document.getElementById('btnDownloadHD').classList.remove('visible');
+                document.getElementById('btnDownloadImages').classList.remove('visible');
+            }
+        }
+
+        window.previousScene = function() {
+            console.log('Retrocediendo escena...');
+            console.log('Escena actual:', currentScene);
+            currentScene = (currentScene - 1 + scenes.length) % scenes.length;
+            console.log('Nueva escena:', currentScene);
+            updateScene();
+            sceneStartTime = Date.now();
+            
+            // Ocultar botón de descarga si no es escena 7
+            if (currentScene !== 6) {
+                document.getElementById('btnDownloadHD').classList.remove('visible');
+                document.getElementById('btnDownloadImages').classList.remove('visible');
+            }
+        }
+
+        function init() {
+            scenes = document.querySelectorAll('.scene');
+            scenes.forEach((scene, index) => {
+                totalDuration += parseInt(scene.dataset.duration);
+            });
+            updateScene();
+            requestAnimationFrame(updateProgress);
+            startAutoChange();
+            
+            // Configurar event listeners para flechas
+            document.getElementById('btnNext').addEventListener('click', nextScene);
+            document.getElementById('btnPrev').addEventListener('click', previousScene);
+        }
+
+        function updateScene() {
+            console.log('Actualizando escena a:', currentScene);
+            console.log('Total escenas:', scenes.length);
+            scenes.forEach((scene, index) => {
+                scene.classList.remove('active');
+                if (index === currentScene) {
+                    scene.classList.add('active');
+                    console.log('Escena activa:', index);
+                }
+            });
+            
+            document.getElementById('sceneIndicator').textContent = 
+                `Escena ${currentScene + 1}/${scenes.length}`;
+            
+            // Reset animation timing for this scene
+            const activeScene = scenes[currentScene];
+            const animatedElements = activeScene.querySelectorAll('[style*="animation-delay"]');
+            animatedElements.forEach(el => {
+                el.style.animation = 'none';
+                el.offsetHeight; // Trigger reflow
+                el.style.animation = '';
+            });
+        }
+
+        function updateProgress() {
+            const elapsed = Date.now() - sceneStartTime;
+            const currentSceneEl = scenes[currentScene];
+            const duration = parseInt(currentSceneEl.dataset.duration);
+            const progress = Math.min((elapsed / duration) * 100, 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+            requestAnimationFrame(updateProgress);
+        }
+
+        // Función para cambio automático de escenas
+        let autoChangeInterval;
+        function startAutoChange() {
+            if (autoChangeInterval) clearInterval(autoChangeInterval);
+            autoChangeInterval = setInterval(() => {
+                if (!isPaused && !isRecording) {
+                    currentScene = (currentScene + 1) % scenes.length;
+                    updateScene();
+                    sceneStartTime = Date.now();
+                    
+                    // Mostrar botón de descarga en escena 7
+                    if (currentScene === 6) {
+                        document.getElementById('btnDownloadHD').classList.add('visible');
+                        document.getElementById('btnDownloadImages').classList.add('visible');
+                    } else {
+                        document.getElementById('btnDownloadHD').classList.remove('visible');
+                        document.getElementById('btnDownloadImages').classList.remove('visible');
+                    }
+                }
+            }, 5000);
+        }
+
+        function restartVideo() {
+            currentScene = 0;
+            sceneStartTime = Date.now();
+            updateScene();
+            // Ocultar botón de descarga al reiniciar
+            document.getElementById('btnDownloadHD').classList.remove('visible');
+            document.getElementById('btnDownloadImages').classList.remove('visible');
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                pauseStartTime = Date.now();
+            } else {
+                sceneStartTime += Date.now() - pauseStartTime;
+            }
+        }
+
+        // Configurar evento de descarga HD
+        document.getElementById('btnDownloadHD').addEventListener('click', downloadVideo);
+        document.getElementById('btnDownloadImages').addEventListener('click', downloadAllScenesImages);
+
+        async function downloadVideo() {
+            const btn = document.getElementById('btnDownload');
+            btn.disabled = true;
+            btn.textContent = '⏳ Grabando...';
+            
+            try {
+                // Crear canvas para grabar
+                const videoContainer = document.querySelector('.video-container');
+                canvas = document.createElement('canvas');
+                canvas.width = 1920;
+                canvas.height = 1080;
+                ctx = canvas.getContext('2d');
+                
+                // Configurar MediaRecorder
+                const stream = canvas.captureStream(30);
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9',
+                    videoBitsPerSecond: 5000000
+                });
+                
+                recordedFrames = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedFrames.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedFrames, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'click-entrega-promo.webm';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    btn.disabled = false;
+                    btn.textContent = '📥 Descargar MP4';
+                    alert('✅ ¡Video grabado!\n\nSe descargó como WEBM (formato web).\n\nPara convertir a MP4:\n1. Usa online-convert.com\n2. O cloudconvert.com\n3. O cualquier convertidor online');
+                };
+                
+                // Iniciar grabación
+                isRecording = true;
+                restartVideo();
+                togglePause();
+                mediaRecorder.start(100);
+                
+                // Detener después de que termine el video
+                setTimeout(() => {
+                    stopRecording();
+                }, totalDuration + 1000);
+
+            } catch (error) {
+                console.error('Error al grabar:', error);
+                btn.disabled = false;
+                btn.textContent = '📥 Descargar MP4';
+                alert('❌ Error al grabar: ' + error.message);
+            }
+        }
+        
+        function stopRecording() {
+            isRecording = false;
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            togglePause();
+        }
+
+        // Función para descargar imágenes de todas las escenas
+        async function downloadAllScenesImages() {
+            const btn = document.getElementById('btnDownloadImages');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generando imágenes...';
+            
+            try {
+                const videoContainer = document.querySelector('.video-container');
+                const originalScene = currentScene;
+                
+                // Capturar cada escena y descargar individualmente
+                for (let i = 0; i < scenes.length; i++) {
+                    btn.textContent = `📸 Procesando escena ${i + 1}/7...`;
+                    
+                    // Cambiar a la escena i
+                    currentScene = i;
+                    updateScene();
+                    
+                    // Esperar a que se renderice
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Capturar canvas
+                    const canvas = await html2canvas(videoContainer, {
+                        width: 1920,
+                        height: 1080,
+                        scale: 1,
+                        useCORS: true,
+                        backgroundColor: '#000',
+                        logging: false
+                    });
+                    
+                    // Descargar imagen
+                    const link = document.createElement('a');
+                    link.download = `Escena_${String(i + 1).padStart(2, '0')}_ClickEntrega.png`;
+                    link.href = canvas.toDataURL('image/png', 1.0);
+                    link.click();
+                    
+                    console.log(`✅ Escena ${i + 1} descargada`);
+                    
+                    // Pequeña pausa entre imágenes
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                
+                // Regresar a la escena original
+                currentScene = originalScene;
+                updateScene();
+                
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: white;">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    DESCARGAR IMÁGENES (7 ESCENAS)
+                `;
+                
+                alert('✅ ¡Imágenes generadas!\n\nSe descargaron 7 imágenes PNG:\n• Calidad HD (1920x1080)\n• Listas para redes sociales\n\nRevisa tu carpeta de descargas.');
+                
+            } catch (error) {
+                console.error('Error al generar imágenes:', error);
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: white;">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    DESCARGAR IMÁGENES (7 ESCENAS)
+                `;
+                alert('❌ Error al generar imágenes: ' + error.message);
+            }
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowRight') {
+                // Flecha derecha - siguiente escena
+                e.preventDefault();
+                currentScene = (currentScene + 1) % scenes.length;
+                updateScene();
+                sceneStartTime = Date.now();
+            } else if (e.code === 'ArrowLeft') {
+                // Flecha izquierda - escena anterior
+                e.preventDefault();
+                currentScene = (currentScene - 1 + scenes.length) % scenes.length;
+                updateScene();
+                sceneStartTime = Date.now();
+            } else if (e.code === 'Space') {
+                // Espacio - pausar/reanudar
+                e.preventDefault();
+                togglePause();
+            }
+        });
+
+        // Start the presentation
+        init();
+    </script>
+</body>
+</html>

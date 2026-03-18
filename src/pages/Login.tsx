@@ -1,10 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthService from '../services/AuthService';
-
-// CREDENCIALES POR DEFECTO PARA DEMOSTRACIÓN
-const DEFAULT_EMAIL = 'cliente@demo.com';
-const DEFAULT_PASSWORD = '123456';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -12,38 +8,6 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Auto-login con credenciales por defecto
-  useEffect(() => {
-    const performAutoLogin = async () => {
-      // Verificar si ya hay una sesión activa
-      if (AuthService.isAuthenticated()) {
-        navigate('/inicio');
-        return;
-      }
-
-      // Intentar auto-login con credenciales por defecto
-      try {
-        setLoading(true);
-        const success = await AuthService.login(DEFAULT_EMAIL, DEFAULT_PASSWORD);
-        
-        if (success) {
-          console.log('✅ Auto-login exitoso con cuenta virtual');
-          navigate('/inicio');
-        } else {
-          console.log('❌ Auto-login fallido. Mostrar formulario de login.');
-          setError('No se pudo iniciar sesión automáticamente. Por favor, ingresa tus credenciales.');
-        }
-      } catch (err) {
-        console.error('Error en auto-login:', err);
-        setError('Error de conexión. Intenta manualmente.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    performAutoLogin();
-  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,58 +61,6 @@ const Login: React.FC = () => {
           </p>
         </div>
 
-        {/* Información de cuenta por defecto */}
-        <div style={{
-          backgroundColor: '#f0f9ff',
-          border: '1px solid #bae6fd',
-          borderRadius: '0.5rem',
-          padding: '1rem',
-          marginBottom: '1.5rem'
-        }}>
-          <p style={{
-            fontSize: '0.75rem',
-            color: '#0369a1',
-            marginBottom: '0.5rem',
-            fontWeight: '600'
-          }}>
-            🎯 Cuenta Virtual de Prueba
-          </p>
-          <div style={{ fontSize: '0.75rem', color: '#0c4a6e', lineHeight: '1.6' }}>
-            <div><strong>Email:</strong> {DEFAULT_EMAIL}</div>
-            <div><strong>Contraseña:</strong> {DEFAULT_PASSWORD}</div>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              setLoading(true);
-              setError('');
-              const success = await AuthService.login(DEFAULT_EMAIL, DEFAULT_PASSWORD);
-              if (success) {
-                navigate('/inicio');
-              } else {
-                setError('Error al iniciar con cuenta demo');
-              }
-              setLoading(false);
-            }}
-            disabled={loading}
-            style={{
-              marginTop: '0.5rem',
-              width: '100%',
-              padding: '0.5rem',
-              backgroundColor: '#0ea5e9',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontWeight: '600',
-              fontSize: '0.75rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.2s'
-            }}
-          >
-            {loading ? 'Iniciando...' : '⚡ Entrada Rápida (Demo)'}
-          </button>
-        </div>
-
         {/* Formulario */}
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: '1.5rem' }}>
@@ -173,7 +85,7 @@ const Login: React.FC = () => {
                 borderRadius: '0.5rem',
                 fontSize: '1rem'
               }}
-              placeholder={DEFAULT_EMAIL}
+              placeholder="tu@correo.com"
             />
           </div>
 
@@ -199,7 +111,7 @@ const Login: React.FC = () => {
                 borderRadius: '0.5rem',
                 fontSize: '1rem'
               }}
-              placeholder={DEFAULT_PASSWORD}
+              placeholder="••••••"
             />
           </div>
 

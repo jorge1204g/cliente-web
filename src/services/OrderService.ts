@@ -113,8 +113,8 @@ class OrderService {
           productId: '' // Agregar productId vacío para compatibilidad
         }] : [],
         subtotal: 0,
-        deliveryCost: 0,
-        total: 0,
+        deliveryCost: 60.00, // Ganancia fija de $60.00 por pedido
+        total: 60.00,
         customerLocation: orderData.deliveryLocation || { latitude: 24.6536, longitude: -102.8738 },
         pickupLocationUrl: orderData.pickupUrl || 'Dirección de Prueba',
         deliveryAddress: orderData.deliveryAddress,
@@ -130,7 +130,7 @@ class OrderService {
         restaurantMapUrl: '',
         paymentMethod: 'CASH',
         dateTime: new Date().toISOString(),
-        restaurantName: orderData.pickupName || 'Por asignar',
+        restaurantName: orderData.pickupName || 'Pedido del cliente', // Cambiado de "Por asignar" para mayor claridad
         // NO agregar restaurantId - Este es un pedido del CLIENTE, no del restaurante
         // Los repartidores lo verán porque tiene status MANUAL_ASSIGNED y candidateDeliveryIds vacío
         // Campos adicionales para compatibilidad total con restaurante
