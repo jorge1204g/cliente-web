@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthService from '../services/AuthService';
 import OrderService from '../services/OrderService';
+import AddressSearchWithMap from '../components/AddressSearchWithMap';
 
 const CreateOrderPage: React.FC = () => {
   const navigate = useNavigate();
@@ -410,95 +411,150 @@ const CreateOrderPage: React.FC = () => {
              border: '1px solid #bfdbfe',
              marginBottom: '1.5rem'
            }}>
-             <button
-               type="button"
-               onClick={() => {
-                 if ('geolocation' in navigator) {
-                   setLoading(true);
-                   navigator.geolocation.getCurrentPosition(
-                     async (position) => {
-                   const lat = position.coords.latitude;
-                   const lng = position.coords.longitude;
-                        
-                       // Guardar coordenadas en los estados
-                       setDeliveryLat(lat);
-                       setDeliveryLng(lng);
-                        
-                       try {
-                         // Intentar con Nominatim primero con más detalles
-                     const response = await fetch(
-                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`
-                        );
-                     const data = await response.json();
+             {/* Botones de ubicación en fila */}
+             <div style={{
+               display: 'flex',
+               gap: '1rem',
+               justifyContent: 'center',
+               flexWrap: 'wrap',
+               marginBottom: '1rem'
+             }}>
+               {/* Botón GPS - Obtener ubicación */}
+               <button
+                 type="button"
+                 onClick={() => {
+                   if ('geolocation' in navigator) {
+                     setLoading(true);
+                     navigator.geolocation.getCurrentPosition(
+                       async (position) => {
+                     const lat = position.coords.latitude;
+                     const lng = position.coords.longitude;
                           
-                         // Construir dirección más completa y llenar campos
-                     const road = data.address?.road || data.address?.pedestrian || '';
-                     const hNumber = data.address?.house_number || '';
-                     const s = data.address?.suburb || data.address?.neighbourhood || data.address?.quarter || '';
-                     const c = data.address?.city || data.address?.town || data.address?.village || '';
-                     const p = data.address?.postcode || '';
-                     const st = data.address?.state || '';
-                        
-                         // Llenar campos individuales
-                         setStreet(road);
-                         setHouseNumber(hNumber);
-                         setSuburb(s);
-                         setCity(c);
-                         setState(st);
-                         setPostcode(p);
+                         // Guardar coordenadas en los estados
+                         setDeliveryLat(lat);
+                         setDeliveryLng(lng);
+                          
+                         try {
+                           // Intentar con Nominatim primero con más detalles
+                       const response = await fetch(
+                              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`
+                          );
+                       const data = await response.json();
+                            
+                           // Construir dirección más completa y llenar campos
+                       const road = data.address?.road || data.address?.pedestrian || '';
+                       const hNumber = data.address?.house_number || '';
+                       const s = data.address?.suburb || data.address?.neighbourhood || data.address?.quarter || '';
+                       const c = data.address?.city || data.address?.town || data.address?.village || '';
+                       const p = data.address?.postcode || '';
+                       const st = data.address?.state || '';
+                            
+                           // Llenar campos individuales
+                           setStreet(road);
+                           setHouseNumber(hNumber);
+                           setSuburb(s);
+                           setCity(c);
+                           setState(st);
+                           setPostcode(p);
 
-                      alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng);
-                       } catch (error) {
-                     console.error('Error al obtener dirección:', error);
-                         alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
-                       } finally {
+                        alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección');
+                         } catch (error) {
+                       console.error('Error al obtener dirección:', error);
+                           alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
+                         } finally {
+                           setLoading(false);
+                         }
+                       },
+                       (error) => {
                          setLoading(false);
+                     console.error('Error de geolocalización:', error);
+                         alert('❌ No se pudo obtener tu ubicación\n\nAsegúrate de permitir el acceso a tu ubicación en el navegador.');
+                       },
+                       {
+                         enableHighAccuracy: true,
+                         timeout: 15000,
+                         maximumAge: 0
                        }
-                     },
-                     (error) => {
-                       setLoading(false);
-                   console.error('Error de geolocalización:', error);
-                       alert('❌ No se pudo obtener tu ubicación\n\nAsegúrate de permitir el acceso a tu ubicación en el navegador.');
-                     },
-                     {
-                       enableHighAccuracy: true,
-                       timeout: 15000,
-                       maximumAge: 0
-                     }
-                   );
-                 } else {
-                   alert('❌ Tu navegador no soporta geolocalización');
-                 }
-               }}
-               disabled={loading}
-               style={{
-                 backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-               color: 'white',
-                 border: 'none',
-                 padding: '0.75rem 1.5rem',
-                 borderRadius: '0.5rem',
-                 fontWeight: '600',
-                 cursor: loading ? 'not-allowed' : 'pointer',
-                 fontSize: '0.875rem',
-                 whiteSpace: 'nowrap',
-                 display: 'flex',
-                 alignItems: 'center',
-                 gap: '0.5rem',
-                 margin: '0 auto'
-               }}
-               title="Obtener mi ubicación actual con GPS"
-             >
-               {loading ? '🛰️ Obteniendo...' : '🛰️ Mi Ubicación'}
-             </button>
+                     );
+                   } else {
+                     alert('❌ Tu navegador no soporta geolocalización');
+                   }
+                 }}
+                 disabled={loading}
+                 style={{
+                   backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                 color: 'white',
+                   border: 'none',
+                   padding: '0.75rem 1.5rem',
+                   borderRadius: '0.5rem',
+                   fontWeight: '600',
+                   cursor: loading ? 'not-allowed' : 'pointer',
+                   fontSize: '0.875rem',
+                   whiteSpace: 'nowrap',
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '0.5rem',
+                   transition: 'background-color 0.2s'
+                 }}
+                 title="Obtener mi ubicación actual con GPS"
+               >
+                 {loading ? '🛰️ Obteniendo...' : '🛰️ Mi Ubicación'}
+               </button>
+
+               {/* Botón Google Maps - Solo visible si hay coordenadas */}
+               {(deliveryLat !== null && deliveryLng !== null) && (
+                 <button
+                   type="button"
+                   onClick={() => {
+                     const mapsUrl = `https://www.google.com/maps?q=${deliveryLat},${deliveryLng}&z=17`;
+                     window.open(mapsUrl, '_blank');
+                   }}
+                   style={{
+                     backgroundColor: '#dc2626',
+                     color: 'white',
+                     border: 'none',
+                     padding: '0.75rem 1.5rem',
+                     borderRadius: '0.5rem',
+                     fontWeight: '600',
+                     cursor: 'pointer',
+                     fontSize: '0.875rem',
+                     whiteSpace: 'nowrap',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '0.5rem',
+                     transition: 'background-color 0.2s'
+                   }}
+                   onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                   onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                   title="Ver mi ubicación en Google Maps"
+                 >
+                   🗺️ Ver en Google Maps
+                 </button>
+               )}
+             </div>
              <p style={{
                fontSize: '0.75rem',
              color: '#6b7280',
                marginTop: '0.5rem',
                textAlign: 'center'
              }}>
-               💡 Presiona este botón para obtener automáticamente tu ubicación GPS con calle, número, colonia y coordenadas
+               💡 Presiona "🛰️ Mi Ubicación" para obtener automáticamente tu ubicación GPS con calle, número, colonia y coordenadas
              </p>
            </div>
+           
+           {/* Componente de búsqueda de dirección con mapa */}
+           <AddressSearchWithMap
+             onAddressSelect={(data) => {
+               setDeliveryLat(data.lat);
+               setDeliveryLng(data.lng);
+               setStreet(data.street);
+               setHouseNumber(data.houseNumber);
+               setSuburb(data.suburb);
+               setCity(data.city);
+               setState(data.state);
+               setPostcode(data.postcode);
+             }}
+           />
 
             {/* Campos de dirección separados */}
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>

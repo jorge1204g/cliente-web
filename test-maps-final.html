@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Google Maps - FINAL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; margin-bottom: 10px; }
+        h2 { color: #34495e; margin-top: 30px; }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        #map {
+            width: 100%;
+            height: 500px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px 10px 0;
+            transition: background 0.3s;
+        }
+        button:hover { background: #45a049; }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .test-result {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #4CAF50;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ Prueba API Key Google Maps - Servidor Local</h1>
+        <p style="color: #666;"><strong>URL:</strong> http://localhost:3003/test-maps-final.html</p>
+        
+        <div id="status" class="status warning">⏳ Iniciando pruebas...</div>
+
+        <h2>✅ Prueba 1: Mapa Interactivo</h2>
+        <div id="map"></div>
+        <div id="mapStatus" class="status warning">⏳ Cargando mapa...</div>
+
+        <h2>✅ Prueba 2: Geocodificación Inversa</h2>
+        <button onclick="testGeocoding()">📍 Probar Geocodificación</button>
+        <div id="geoResult" class="test-result" style="display:none;"></div>
+
+        <h2>✅ Prueba 3: Autocompletado</h2>
+        <input type="text" id="autocomplete" placeholder="Escribe una dirección (ej: Av. Reforma, Ciudad de México)...">
+        <div id="autoStatus" class="test-result" style="display:none;"></div>
+
+        <h2>📊 Resumen Final</h2>
+        <div id="summary"></div>
+    </div>
+
+    <script>
+        const API_KEY = 'AIzaSyCjqlvk5RqykmtVyjYwe6vF0QWxZ9RFRYE';
+        let map, geocoder;
+        
+        // Estado de las pruebas
+        window.testResults = {
+            map: false,
+            geo: false,
+            auto: false
+        };
+
+        function initMap() {
+            const mexicoCity = { lat: 19.4326, lng: -99.1332 };
+            
+            try {
+                map = new google.maps.Map(document.getElementById('map'), {
+                    center: mexicoCity,
+                    zoom: 12,
+                    streetViewControl: false,
+                    mapTypeControl: true,
+                    fullscreenControl: true
+                });
+
+                geocoder = new google.maps.Geocoder();
+
+                document.getElementById('mapStatus').className = 'status success';
+                document.getElementById('mapStatus').textContent = '✅ Mapa cargado exitosamente';
+                window.testResults.map = true;
+                
+                // Marcador de ejemplo
+                new google.maps.Marker({
+                    position: mexicoCity,
+                    map: map,
+                    title: 'Ciudad de México'
+                });
+
+                updateSummary();
+            } catch (error) {
+                console.error('Error al cargar mapa:', error);
+                document.getElementById('mapStatus').className = 'status error';
+                document.getElementById('mapStatus').textContent = '❌ Error al cargar mapa: ' + error.message;
+            }
+        }
+
+        function testGeocoding() {
+            if (!geocoder) {
+                alert('Geocodificador no disponible aún');
+                return;
+            }
+
+            const coords = { lat: 19.4326, lng: -99.1332 };
+            const resultDiv = document.getElementById('geoResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<em>⏳ Realizando geocodificación...</em>';
+            
+            geocoder.geocode({ location: coords }, (results, status) => {
+                console.log('Geocoding status:', status);
+                console.log('Results:', results);
+                
+                if (status === 'OK' && results && results[0]) {
+                    window.testResults.geo = true;
+                    resultDiv.className = 'test-result';
+                    resultDiv.style.background = '#d4edda';
+                    resultDiv.style.borderLeftColor = '#28a745';
+                    resultDiv.innerHTML = `
+                        <strong>✅ Geocodificación exitosa</strong><br>
+                        <strong>Dirección:</strong> ${results[0].formatted_address}<br>
+                        <small style="color: #666;">Coordenadas: ${coords.lat}, ${coords.lng}</small>
+                    `;
+                    updateSummary();
+                } else {
+                    window.testResults.geo = false;
+                    let errorMsg = 'Error desconocido';
+                    switch(status) {
+                        case 'ZERO_RESULTS': errorMsg = 'No se encontraron resultados'; break;
+                        case 'NOT_FOUND': errorMsg = 'Coordenadas no encontradas'; break;
+                        case 'PERMISSION_DENIED': errorMsg = 'Permiso denegado - Verifica Geocoding API'; break;
+                        case 'INVALID_REQUEST': errorMsg = 'Solicitud inválida'; break;
+                        default: errorMsg = status;
+                    }
+                    resultDiv.className = 'test-result';
+                    resultDiv.style.background = '#f8d7da';
+                    resultDiv.style.borderLeftColor = '#dc3545';
+                    resultDiv.innerHTML = `
+                        <strong>❌ Error: ${errorMsg}</strong><br>
+                        <small>Status: ${status}</small>
+                    `;
+                    updateSummary();
+                }
+            });
+        }
+
+        function setupAutocomplete() {
+            const input = document.getElementById('autocomplete');
+            
+            if (google.maps.places) {
+                const autocomplete = new google.maps.places.Autocomplete(input, {
+                    componentRestrictions: { country: 'mx' },
+                    fields: ['geometry', 'formatted_address', 'name']
+                });
+
+                autocomplete.addListener('place_changed', () => {
+                    const place = autocomplete.getPlace();
+                    console.log('Place seleccionado:', place);
+                    
+                    if (place && place.formatted_address) {
+                        window.testResults.auto = true;
+                        const statusDiv = document.getElementById('autoStatus');
+                        statusDiv.style.display = 'block';
+                        statusDiv.className = 'test-result';
+                        statusDiv.style.background = '#d4edda';
+                        statusDiv.style.borderLeftColor = '#28a745';
+                        statusDiv.innerHTML = `
+                            <strong>✅ Autocompletado funciona</strong><br>
+                            <strong>Lugar:</strong> ${place.formatted_address}
+                            ${place.name ? '<br><strong>Nombre:</strong> ' + place.name : ''}
+                        `;
+                        updateSummary();
+                    } else {
+                        console.warn('Place sin información completa');
+                    }
+                });
+            } else {
+                console.error('Places API no disponible');
+                const statusDiv = document.getElementById('autoStatus');
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'test-result';
+                statusDiv.style.background = '#f8d7da';
+                statusDiv.style.borderLeftColor = '#dc3545';
+                statusDiv.innerHTML = '<strong>❌ Places API no disponible</strong>';
+            }
+        }
+
+        function updateSummary() {
+            const passed = [window.testResults.map, window.testResults.geo, window.testResults.auto]
+                .filter(r => r).length;
+            const total = 3;
+            
+            const summaryDiv = document.getElementById('summary');
+            
+            let html = `
+                <div class="status ${passed === total ? 'success' : 'warning'}">
+                    <strong>Resultados:</strong><br>
+                    ${window.testResults.map ? '✅' : '⏳'} Mapa: ${window.testResults.map ? 'APROBADO' : 'PENDIENTE'}<br>
+                    ${window.testResults.geo ? '✅' : '⏳'} Geocodificación: ${window.testResults.geo ? 'APROBADA' : 'PENDIENTE'}<br>
+                    ${window.testResults.auto ? '✅' : '⏳'} Autocompletado: ${window.testResults.auto ? 'APROBADO' : 'PENDIENTE'}<br>
+                    <br>
+                    <strong>Total:</strong> ${passed}/${total} pruebas aprobadas
+                </div>
+            `;
+
+            if (passed === total) {
+                html += `
+                    <div class="status success">
+                        🎉 <strong>¡Excelente!</strong><br>
+                        Tu API Key de Google Maps está funcionando correctamente.<br>
+                        Todos los servicios están operativos con tu nueva tarjeta vinculada.
+                    </div>
+                `;
+            } else if (passed > 0) {
+                html += `
+                    <div class="status warning">
+                        ⚠️ <strong>Atención:</strong><br>
+                        Algunas pruebas están pendientes. Ejecuta todas las pruebas para ver el resultado completo.
+                    </div>
+                `;
+            }
+            
+            summaryDiv.innerHTML = html;
+        }
+
+        // Cargar Google Maps
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+            console.log('Google Maps script loaded successfully');
+            document.getElementById('status').className = 'status success';
+            document.getElementById('status').textContent = '✅ API cargada - Iniciando pruebas...';
+            initMap();
+            setupAutocomplete();
+        };
+        script.onerror = (error) => {
+            console.error('Error loading Google Maps:', error);
+            document.getElementById('status').className = 'status error';
+            document.getElementById('status').textContent = '❌ Error al cargar Google Maps API';
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>
