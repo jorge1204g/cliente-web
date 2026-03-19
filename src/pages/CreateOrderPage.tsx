@@ -18,9 +18,6 @@ const CreateOrderPage: React.FC = () => {
  const [postcode, setPostcode] = useState('');
  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
- 
-  // Referencia al campo de coordenadas para búsqueda automática
-  const coordinatesInputRef = React.useRef<HTMLInputElement>(null);
   
   // Tipo de servicio
   const [serviceType, setServiceType] = useState('');
