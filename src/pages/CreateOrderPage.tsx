@@ -462,16 +462,17 @@ const CreateOrderPage: React.FC = () => {
                            setTimeout(() => {
                              const coordsInput = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
                              if (coordsInput) {
-                               coordsInput.value = `${lat}, ${lng}`;
+                               // Formato SIN espacio: "23.1742946,-102.8457795"
+                               coordsInput.value = `${lat},${lng}`;
                                // Disparar evento change para que React lo detecte
                                coordsInput.dispatchEvent(new Event('input', { bubbles: true }));
                                
-                               console.log(`✅ Coordenadas pegadas automáticamente: ${lat}, ${lng}`);
+                               console.log(`✅ Coordenadas pegadas automáticamente: ${lat},${lng}`);
                                console.log('💡 Ahora puedes presionar "📍 Buscar" manualmente');
                              }
                            }, 100);
 
-                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n📍 Tus coordenadas se pegaron en "O ingresa coordenadas exactas"\n💡 Ahora presiona "📍 Buscar" manualmente para ver tu ubicación en el mapa');
+                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n📍 Tus coordenadas se pegaron en "O ingresa coordenadas exactas"\n💡 Formato: ' + lat + ',' + lng + ' (sin espacio)\n💡 Ahora presiona "📍 Buscar" manualmente para ver tu ubicación en el mapa');
                          } catch (error) {
                            console.error('Error al obtener dirección:', error);
                            alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
