@@ -460,6 +460,7 @@ const CreateOrderPage: React.FC = () => {
                            // Actualizar el campo de coordenadas en el componente AddressSearchWithMap
                            // Buscamos el input de coordenadas y lo llenamos automáticamente
                            setTimeout(() => {
+                             // 1. Llenar campo combinado de coordenadas
                              const coordsInput = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
                              if (coordsInput) {
                                // Formato SIN espacio: "23.1742946,-102.8457795"
@@ -485,10 +486,38 @@ const CreateOrderPage: React.FC = () => {
                                  coordsInput.dispatchEvent(new Event('input', { bubbles: true }));
                                }
                                
-                               console.log(`✅ Coordenadas pegadas automáticamente: ${coordsValue}`);
-                               console.log('💡 Ahora puedes presionar "📍 Buscar" manualmente');
+                               console.log(`✅ Coordenadas pegadas automáticamente en campo combinado: ${coordsValue}`);
                              }
-                           }, 200);
+                             
+                             // 2. Llenar campos separados de Latitud y Longitud
+                             const latitudeInput = document.querySelector('input[placeholder="Ej: 23.174257"]') as HTMLInputElement;
+                             const longitudeInput = document.querySelector('input[placeholder="Ej: -102.845951"]') as HTMLInputElement;
+                             
+                             if (latitudeInput && longitudeInput) {
+                               const latString = lat.toString();
+                               const lngString = lng.toString();
+                               
+                               // Llenar campo de Latitud
+                               latitudeInput.value = latString;
+                               const latEvents = ['input', 'change'];
+                               latEvents.forEach(eventType => {
+                                 latitudeInput.dispatchEvent(new Event(eventType, { bubbles: true }));
+                               });
+                               
+                               // Llenar campo de Longitud
+                               longitudeInput.value = lngString;
+                               const lngEvents = ['input', 'change'];
+                               lngEvents.forEach(eventType => {
+                                 longitudeInput.dispatchEvent(new Event(eventType, { bubbles: true }));
+                               });
+                               
+                               console.log(`✅ Coordenadas separadas pegadas automáticamente:`);
+                               console.log(`   🌎 Latitud: ${latString}`);
+                               console.log(`   🧭 Longitud: ${lngString}`);
+                             }
+                             
+                             console.log('💡 Ahora puedes presionar "📍 Buscar" manualmente o se buscará automáticamente');
+                           }, 300);
 
                            alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n⏳ Buscando tu ubicación en el mapa automáticamente...');
                            
