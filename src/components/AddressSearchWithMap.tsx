@@ -242,16 +242,14 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               type="text"
               value={coordinatesInput}
               onChange={(e) => setCoordinatesInput(e.target.value)}
-              placeholder="ACTUALIZADO v7 - Ej: 23.156, -102.345"
+              placeholder="Ej: 23.156, -102.345"
               style={{
                 flex: 1,
                 padding: '0.75rem',
                 border: '1px solid #d1d5db',
                 borderRadius: '0.5rem',
                 fontSize: '0.95rem',
-                fontFamily: 'monospace',
-                backgroundColor: '#f0fdf4',
-                borderColor: '#86efac'
+                fontFamily: 'monospace'
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -283,11 +281,10 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
 
           <p style={{
             fontSize: '0.75rem',
-            color: '#16a34a',
-            marginTop: '0.5rem',
-            fontWeight: '600'
+            color: '#6b7280',
+            marginTop: '0.5rem'
           }}>
-            💡 VERSIÓN ACTUALIZADA v7 - Formato: latitud, longitud (ejemplo: 23.156, -102.345). Presiona Enter para buscar.
+            💡 Formato: latitud, longitud (ejemplo: 23.156, -102.345). Presiona Enter para buscar.
           </p>
         </div>
 
