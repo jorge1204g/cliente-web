@@ -119,41 +119,61 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   // Manejar entrada de coordenadas
   const handleCoordinatesSearch = () => {
     try {
-      // Esperar formatos: "lat, lng" o "lat lng"
-      const parts = coordinatesInput.split(/[\s,]+/).filter(p => p.trim() !== '');
+      console.log('🔍 Coordenadas a validar:', coordinatesInput);
       
-      if (parts.length >= 2) {
-        const lat = parseFloat(parts[0]);
-        const lng = parseFloat(parts[1]);
-        
-        // Validar que sean coordenadas válidas
-        if (isNaN(lat) || isNaN(lng)) {
-          alert('⚠️ Por favor ingresa coordenadas válidas (ejemplo: 23.156, -102.345)');
-          return;
-        }
-        
-        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-          alert('⚠️ Coordenadas inválidas. Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.');
-          return;
-        }
-        
-        // Mover el mapa a las coordenadas
-        setSelectedLocation({ lat, lng });
-        
-        if (mapInstance) {
-          mapInstance.panTo({ lat, lng });
-          mapInstance.setZoom(16);
-        }
-        
-        // Hacer geocodificación inversa para obtener la dirección
-        reverseGeocode(lat, lng);
-        
-        console.log(`✅ Coordenadas: ${lat}, ${lng}`);
-      } else {
-        alert('⚠️ Formato incorrecto. Usa: latitud, longitud (ejemplo: 23.156, -102.345)');
+      // Limpiar espacios y dividir por coma o espacio
+      const cleanInput = coordinatesInput.trim();
+      
+      // Intentar múltiples formatos
+      let lat: number, lng: number;
+      
+      // Formato 1: "lat,lng" o "lat, lng" (con o sin espacio)
+      if (cleanInput.includes(',')) {
+        const parts = cleanInput.split(',');
+        lat = parseFloat(parts[0].trim());
+        lng = parseFloat(parts[1].trim());
+      } 
+      // Formato 2: "lat lng" (solo espacio)
+      else if (cleanInput.includes(' ')) {
+        const parts = cleanInput.split(/\s+/);
+        lat = parseFloat(parts[0].trim());
+        lng = parseFloat(parts[1].trim());
       }
+      else {
+        alert('⚠️ Formato incorrecto. Usa: latitud, longitud (ejemplo: 23.156, -102.345)');
+        return;
+      }
+      
+      console.log('✅ Latitud parseada:', lat, 'Longitud parseada:', lng);
+      
+      // Validar que sean números válidos
+      if (isNaN(lat) || isNaN(lng)) {
+        console.error('❌ Coordenadas inválidas - NaN detected');
+        alert('⚠️ Por favor ingresa coordenadas válidas (ejemplo: 23.156, -102.345)');
+        return;
+      }
+      
+      // Validar rangos
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        console.error('❌ Coordenadas fuera de rango:', lat, lng);
+        alert('⚠️ Coordenadas inválidas. Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.');
+        return;
+      }
+      
+      // Mover el mapa a las coordenadas
+      setSelectedLocation({ lat, lng });
+      
+      if (mapInstance) {
+        mapInstance.panTo({ lat, lng });
+        mapInstance.setZoom(16);
+      }
+      
+      // Hacer geocodificación inversa para obtener la dirección
+      reverseGeocode(lat, lng);
+      
+      console.log(`✅ Coordenadas exitosas: ${lat}, ${lng}`);
     } catch (error) {
-      console.error('Error al procesar coordenadas:', error);
+      console.error('❌ Error al procesar coordenadas:', error);
       alert('❌ Error al procesar las coordenadas. Verifica el formato.');
     }
   };
