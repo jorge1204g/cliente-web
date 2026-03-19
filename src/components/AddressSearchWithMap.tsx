@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { LoadScript, Autocomplete, GoogleMap, Marker } from '@react-google-maps/api';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface AddressSearchProps {
   onAddressSelect: (data: {
@@ -27,14 +26,120 @@ const center = {
   lng: -102.8738
 };
 
-const libraries: ('places')[] = ['places'];
-
 const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect }) => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [coordinatesInput, setCoordinatesInput] = useState('');
+  const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+  const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
+
+  // Cargar librería de Places
+  useEffect(() => {
+    const loadPlacesLibrary = async () => {
+      try {
+        // Importar la librería de places dinámicamente
+        await import('@googlemaps/js-api-loader').then(async ({ Loader }) => {
+          const loader = new Loader({
+            apiKey: GOOGLE_MAPS_API_KEY,
+            version: 'beta',
+            libraries: ['places']
+          });
+          
+          await loader.load();
+          setIsLibraryLoaded(true);
+          console.log('✅ Librería de Google Places cargada exitosamente');
+        });
+      } catch (error) {
+        console.error('❌ Error al cargar Google Places:', error);
+      }
+    };
+
+    loadPlacesLibrary();
+  }, []);
+
+  // Inicializar PlaceAutocompleteElement
+  useEffect(() => {
+    if (isLibraryLoaded && autocompleteRef.current && google.maps.places.PlaceAutocompleteElement) {
+      try {
+        // Crear elemento de autocompletado
+        const autocompleteOptions = {
+          componentRestrictions: { country: 'mx' },
+          fields: ['geometry', 'formatted_address', 'address_components'],
+        };
+
+        autocompleteInstance.current = new google.maps.places.PlaceAutocompleteElement(
+          autocompleteOptions
+        );
+
+        // Renderizar en el contenedor - PlaceAutocompleteElement se renderiza automáticamente
+        // cuando se appendea al DOM
+        if (autocompleteRef.current && autocompleteInstance.current) {
+          autocompleteRef.current.innerHTML = '';
+          autocompleteRef.current.appendChild(autocompleteInstance.current);
+        }
+
+        // Escuchar cuando se selecciona un lugar usando el nuevo sistema de eventos
+        autocompleteInstance.current.addEventListener('gmp-placeselect', async (event: any) => {
+          const place = await event.place;
+          
+          if (place.location && place.formattedAddress) {
+            const lat = place.location.latitude;
+            const lng = place.location.longitude;
+            
+            // Extraer componentes de dirección
+            let road = '';
+            let houseNumber = '';
+            let suburb = '';
+            let city = '';
+            let state = '';
+            let postcode = '';
+
+            // Usar addressComponents si están disponibles
+            if (place.addressComponents) {
+              place.addressComponents.forEach((component: any) => {
+                const types = component.types;
+                if (types.includes('route')) road = component.longName;
+                if (types.includes('street_number')) houseNumber = component.shortName;
+                if (types.includes('sublocality') || types.includes('neighborhood')) suburb = component.longName;
+                if (types.includes('locality')) city = component.longName;
+                if (types.includes('administrative_area_level_1')) state = component.shortName;
+                if (types.includes('postal_code')) postcode = component.shortName;
+              });
+            }
+
+            // Actualizar estado
+            setSelectedLocation({ lat, lng });
+
+            // Mover el mapa
+            if (mapInstance) {
+              mapInstance.panTo({ lat, lng });
+              mapInstance.setZoom(16);
+            }
+
+            // Pasar datos al componente padre
+            onAddressSelect({
+              street: road,
+              houseNumber: houseNumber,
+              suburb: suburb,
+              city: city,
+              state: state,
+              postcode: postcode,
+              lat,
+              lng
+            });
+
+            console.log('✅ Lugar seleccionado con nueva API:', place.formattedAddress);
+          }
+        });
+
+        console.log('✅ PlaceAutocompleteElement inicializado correctamente');
+      } catch (error) {
+        console.error('❌ Error al inicializar PlaceAutocompleteElement:', error);
+      }
+    }
+  }, [isLibraryLoaded, mapInstance]);
 
   // Geocodificación inversa con Google Maps
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -84,7 +189,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               lng
             });
 
-            setSearchQuery(`${road}${houseNumber ? ' #' + houseNumber : ''}, ${suburb}`);
             resolve();
           } else {
             console.error('Geocoding failed:', status);
@@ -94,25 +198,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
       });
     } catch (error) {
       console.error('Error al obtener dirección:', error);
-    }
-  };
-
-  const handlePlaceChanged = () => {
-    if (autocomplete) {
-      const place = autocomplete.getPlace();
-      if (place.geometry && place.geometry.location) {
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        reverseGeocode(lat, lng);
-      }
-    }
-  };
-
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
-    if (e.latLng) {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
-      reverseGeocode(lat, lng);
     }
   };
 
@@ -178,55 +263,79 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     }
   };
 
+  // Cargar mapa manualmente
+  useEffect(() => {
+    if (isLibraryLoaded && !mapInstance) {
+      const mapElement = document.getElementById('map');
+      if (mapElement) {
+        const map = new google.maps.Map(mapElement, {
+          center: center,
+          zoom: 13,
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: false,
+          zoomControl: true
+        });
+        setMapInstance(map);
+        console.log('✅ Mapa inicializado correctamente');
+        
+        // Agregar listener para clicks en el mapa
+        map.addListener('click', (e: google.maps.MapMouseEvent) => {
+          if (e.latLng) {
+            const lat = e.latLng.lat();
+            const lng = e.latLng.lng();
+            reverseGeocode(lat, lng);
+          }
+        });
+      }
+    }
+  }, [isLibraryLoaded]);
+
+  // Actualizar marcador cuando cambia la ubicación
+  useEffect(() => {
+    if (mapInstance && selectedLocation) {
+      // Eliminar marcador anterior si existe
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+      }
+      
+      // Crear nuevo marcador
+      markerRef.current = new google.maps.Marker({
+        position: selectedLocation,
+        map: mapInstance,
+        title: 'Ubicación seleccionada'
+      });
+    }
+  }, [selectedLocation, mapInstance]);
+
   return (
-    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
-      <div style={{ marginTop: '1rem' }}>
-        {/* Campo de búsqueda con autocompletado de Google Places */}
-        <div style={{ position: 'relative', marginBottom: '1rem' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '0.875rem',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '0.5rem'
-          }}>
-            🔍 O busca tu dirección manualmente:
-          </label>
-          
-          <Autocomplete
-            onLoad={(auto) => setAutocomplete(auto)}
-            onPlaceChanged={handlePlaceChanged}
-            options={{
-              componentRestrictions: { country: 'mx' },
-              fields: ['geometry', 'formatted_address', 'address_components']
-            }}
-          >
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Ej. Av. Hidalgo 123, Centro, Fresnillo..."
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.5rem',
-                fontSize: '1rem'
-              }}
-            />
-          </Autocomplete>
+    <div style={{ marginTop: '1rem' }}>
+      {/* Campo de búsqueda con autocompletado de Google Places (NUEVA API) */}
+      <div style={{ position: 'relative', marginBottom: '1rem' }}>
+        <label style={{
+          display: 'block',
+          fontSize: '0.875rem',
+          fontWeight: '600',
+          color: '#374151',
+          marginBottom: '0.5rem'
+        }}>
+          🔍 O busca tu dirección manualmente:
+        </label>
+        
+        {/* Contenedor para PlaceAutocompleteElement */}
+        <div ref={autocompleteRef} id="place-autocomplete"></div>
 
-          <p style={{
-            fontSize: '0.75rem',
-            color: '#6b7280',
-            marginTop: '0.5rem'
-          }}>
-            💡 Escribe tu dirección y selecciona de las sugerencias
-          </p>
-        </div>
+        <p style={{
+          fontSize: '0.75rem',
+          color: '#6b7280',
+          marginTop: '0.5rem'
+        }}>
+          💡 Escribe tu dirección y selecciona de las sugerencias
+        </p>
+      </div>
 
-        {/* Campo de coordenadas */}
-        <div style={{ marginBottom: '1rem' }}>
+      {/* Campo de coordenadas */}
+      <div style={{ marginBottom: '1rem' }}>
           <label style={{
             display: 'block',
             fontSize: '0.875rem',
@@ -288,8 +397,8 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
           </p>
         </div>
 
-        {/* Mapa interactivo de Google Maps */}
-        <div style={{ marginBottom: '1rem' }}>
+      {/* Mapa interactivo de Google Maps */}
+      <div style={{ marginBottom: '1rem' }}>
           <label style={{
             display: 'block',
             fontSize: '0.875rem',
@@ -300,25 +409,10 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
             📍 O haz clic en el mapa para seleccionar tu ubicación:
           </label>
           
-          <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={selectedLocation || center}
-            zoom={selectedLocation ? 16 : 13}
-            onClick={handleMapClick}
-            onLoad={(map) => setMapInstance(map)}
-            options={{
-              streetViewControl: false,
-              mapTypeControl: false,
-              fullscreenControl: false,
-              zoomControl: true
-            }}
-          >
-            {selectedLocation && (
-              <Marker
-                position={{ lat: selectedLocation.lat, lng: selectedLocation.lng }}
-              />
-            )}
-          </GoogleMap>
+          <div
+            id="map"
+            style={containerStyle}
+          ></div>
           
           <p style={{
             fontSize: '0.75rem',
@@ -329,8 +423,8 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
           </p>
         </div>
 
-        {/* Ubicación seleccionada */}
-        {selectedLocation && (
+      {/* Ubicación seleccionada */}
+      {selectedLocation && (
           <div style={{
             padding: '1rem',
             backgroundColor: '#eff6ff',
@@ -354,8 +448,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
             </div>
           </div>
         )}
-      </div>
-    </LoadScript>
+    </div>
   );
 };
 
