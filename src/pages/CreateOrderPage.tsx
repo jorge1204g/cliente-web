@@ -463,14 +463,32 @@ const CreateOrderPage: React.FC = () => {
                              const coordsInput = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
                              if (coordsInput) {
                                // Formato SIN espacio: "23.1742946,-102.8457795"
-                               coordsInput.value = `${lat},${lng}`;
-                               // Disparar evento change para que React lo detecte
-                               coordsInput.dispatchEvent(new Event('input', { bubbles: true }));
+                               const coordsValue = `${lat},${lng}`;
                                
-                               console.log(`✅ Coordenadas pegadas automáticamente: ${lat},${lng}`);
+                               // Método 1: Asignar valor directamente
+                               coordsInput.value = coordsValue;
+                               
+                               // Método 2: Disparar múltiples eventos para asegurar que React lo detecte
+                               const events = ['input', 'change', 'keydown', 'keyup'];
+                               events.forEach(eventType => {
+                                 coordsInput.dispatchEvent(new Event(eventType, { bubbles: true }));
+                               });
+                               
+                               // Método 3: Simular entrada de teclado caracter por caracter
+                               // Esto asegura que React detecte el cambio completamente
+                               const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                                 window.HTMLInputElement.prototype, 
+                                 "value"
+                               )?.set;
+                               if (nativeInputValueSetter) {
+                                 nativeInputValueSetter.call(coordsInput, coordsValue);
+                                 coordsInput.dispatchEvent(new Event('input', { bubbles: true }));
+                               }
+                               
+                               console.log(`✅ Coordenadas pegadas automáticamente: ${coordsValue}`);
                                console.log('💡 Ahora puedes presionar "📍 Buscar" manualmente');
                              }
-                           }, 100);
+                           }, 200);
 
                            alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n📍 Tus coordenadas se pegaron en "O ingresa coordenadas exactas"\n💡 Formato: ' + lat + ',' + lng + ' (sin espacio)\n💡 Ahora presiona "📍 Buscar" manualmente para ver tu ubicación en el mapa');
                          } catch (error) {
