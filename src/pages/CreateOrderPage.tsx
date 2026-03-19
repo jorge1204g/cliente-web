@@ -104,11 +104,11 @@ const CreateOrderPage: React.FC = () => {
       return;
     }
 
-    // Validar coordenadas obligatorias
-    if (deliveryLat === null || deliveryLng === null) {
-      setError('Por favor obtén tu ubicación GPS presionando el botón "🛰️ Mi Ubicación"');
-      return;
-    }
+    // Validar coordenadas - YA NO SON OBLIGATORIAS ya que el botón GPS está oculto
+    // if (deliveryLat === null || deliveryLng === null) {
+    //   setError('Por favor obtén tu ubicación GPS presionando el botón "🛰️ Mi Ubicación"');
+    //   return;
+    // }
 
     if (requiresPickup && !pickupAddress) {
       setError('Por favor ingresa la dirección de recogida');
@@ -392,17 +392,17 @@ const CreateOrderPage: React.FC = () => {
 
           {/* Dirección de Entrega */}
           <section style={{ marginBottom: '2rem' }}>
-            <h2 style={{
+            {/* <h2 style={{
               fontSize: '1.25rem',
               fontWeight: 'bold',
-            color: '#1f2937',
+              color: '#1f2937',
               marginBottom: '1rem',
               borderBottom: '2px solid #10b981',
               paddingBottom: '0.5rem'
             }}>
               📍 Dirección de Entrega
-            </h2>
-
+            </h2> */}
+          
             {/* Botón GPS en la parte superior */}
            <div style={{
              padding: '1rem',
@@ -411,7 +411,7 @@ const CreateOrderPage: React.FC = () => {
              border: '1px solid #bfdbfe',
              marginBottom: '1.5rem'
            }}>
-             {/* Botones de ubicación en fila */}
+             {/* Botones de ubicación en fila - BOTÓN GPS OCULTO */}
              <div style={{
                display: 'flex',
                gap: '1rem',
@@ -419,7 +419,7 @@ const CreateOrderPage: React.FC = () => {
                flexWrap: 'wrap',
                marginBottom: '1rem'
              }}>
-               {/* Botón GPS - Obtener ubicación */}
+               {/* Botón GPS - Obtener ubicación - OCULTO 
                <button
                  type="button"
                  onClick={() => {
@@ -500,45 +500,70 @@ const CreateOrderPage: React.FC = () => {
                >
                  {loading ? '🛰️ Obteniendo...' : '🛰️ Mi Ubicación'}
                </button>
+               */}
 
-               {/* Botón Google Maps - Solo visible si hay coordenadas */}
-               {(deliveryLat !== null && deliveryLng !== null) && (
-                 <button
-                   type="button"
-                   onClick={() => {
-                     const mapsUrl = `https://www.google.com/maps?q=${deliveryLat},${deliveryLng}&z=17`;
-                     window.open(mapsUrl, '_blank');
-                   }}
-                   style={{
-                     backgroundColor: '#dc2626',
-                     color: 'white',
-                     border: 'none',
-                     padding: '0.75rem 1.5rem',
-                     borderRadius: '0.5rem',
-                     fontWeight: '600',
-                     cursor: 'pointer',
-                     fontSize: '0.875rem',
-                     whiteSpace: 'nowrap',
-                     display: 'flex',
-                     alignItems: 'center',
-                     gap: '0.5rem',
-                     transition: 'background-color 0.2s'
-                   }}
-                   onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                   onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                   title="Ver mi ubicación en Google Maps"
-                 >
-                   🗺️ Ver en Google Maps
-                 </button>
-               )}
+               {/* 🗺️ NUEVO BOTÓN - Ver mi Ubicación Exacta en Google Maps */}
+               <button
+                 type="button"
+                 onClick={() => {
+                   if ('geolocation' in navigator) {
+                     setLoading(true);
+                     navigator.geolocation.getCurrentPosition(
+                       (position) => {
+                         const lat = position.coords.latitude;
+                         const lng = position.coords.longitude;
+                         
+                         // Abrir Google Maps con la ubicación exacta
+                         const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}&z=17`;
+                         window.open(mapsUrl, '_blank');
+                         setLoading(false);
+                       },
+                       (error) => {
+                         setLoading(false);
+                         console.error('Error de geolocalización:', error);
+                         alert('❌ No se pudo obtener tu ubicación\n\nAsegúrate de permitir el acceso a tu ubicación en el navegador.');
+                       },
+                       {
+                         enableHighAccuracy: true,
+                         timeout: 15000,
+                         maximumAge: 0
+                       }
+                     );
+                   } else {
+                     alert('❌ Tu navegador no soporta geolocalización');
+                   }
+                 }}
+                 disabled={loading}
+                 style={{
+                   backgroundColor: loading ? '#9ca3af' : '#dc2626',
+                   color: 'white',
+                   border: 'none',
+                   padding: '0.75rem 1.5rem',
+                   borderRadius: '0.5rem',
+                   fontWeight: '600',
+                   cursor: loading ? 'not-allowed' : 'pointer',
+                   fontSize: '0.875rem',
+                   whiteSpace: 'nowrap',
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '0.5rem',
+                   transition: 'background-color 0.2s',
+                   margin: '0 auto'
+                 }}
+                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                 title="Conectar con Google Maps y mostrar mi ubicación exacta"
+               >
+                 {loading ? '🗺️ Obteniendo ubicación...' : '🗺️ Ver mi Ubicación en Google Maps'}
+               </button>
              </div>
              <p style={{
                fontSize: '0.75rem',
-             color: '#6b7280',
+               color: '#6b7280',
                marginTop: '0.5rem',
                textAlign: 'center'
              }}>
-               💡 Presiona "🛰️ Mi Ubicación" para obtener automáticamente tu ubicación GPS con calle, número, colonia y coordenadas
+               💡 Presiona "🗺️ Ver mi Ubicación en Google Maps" para ver exactamente dónde estás
              </p>
            </div>
            
@@ -679,7 +704,7 @@ const CreateOrderPage: React.FC = () => {
               ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
             </p>
           </section>
-
+          
           {/* Tipo de Servicio */}
           <section style={{ marginBottom: '2rem' }}>
             <h2 style={{
