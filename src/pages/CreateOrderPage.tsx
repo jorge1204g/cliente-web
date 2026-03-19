@@ -18,6 +18,9 @@ const CreateOrderPage: React.FC = () => {
  const [postcode, setPostcode] = useState('');
  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
+ 
+  // Referencia al campo de coordenadas para búsqueda automática
+  const coordinatesInputRef = React.useRef<HTMLInputElement>(null);
   
   // Tipo de servicio
   const [serviceType, setServiceType] = useState('');
@@ -457,11 +460,28 @@ const CreateOrderPage: React.FC = () => {
                            setState(st);
                            setPostcode(p);
 
-                           // NOTAS: No abrimos Google Maps automáticamente porque en móviles
-                           // la app de Maps toma el foco y el usuario no ve que se llenaron los campos
-                           // El usuario puede verificar las coordenadas en los campos de abajo si están visibles
+                           // Actualizar el campo de coordenadas en el componente AddressSearchWithMap
+                           // Buscamos el input de coordenadas y lo llenamos automáticamente
+                           setTimeout(() => {
+                             const coordsInput = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
+                             if (coordsInput) {
+                               coordsInput.value = `${lat}, ${lng}`;
+                               // Disparar evento change para que React lo detecte
+                               coordsInput.dispatchEvent(new Event('input', { bubbles: true }));
+                               
+                               // Después de medio segundo, hacer clic automático en "Buscar"
+                               setTimeout(() => {
+                                 const searchButton = Array.from(document.querySelectorAll('button')).find(
+                                   btn => btn.textContent?.includes('📍 Buscar')
+                                 ) as HTMLButtonElement;
+                                 if (searchButton) {
+                                   searchButton.click();
+                                 }
+                               }, 500);
+                             }
+                           }, 100);
 
-                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n💡 Revisa los campos de arriba - ¡ya están completos!');
+                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n🗺️ Tus coordenadas se pegaron en el buscador y se están buscando en el mapa...');
                          } catch (error) {
                            console.error('Error al obtener dirección:', error);
                            alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
