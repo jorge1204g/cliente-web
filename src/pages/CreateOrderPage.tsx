@@ -457,11 +457,11 @@ const CreateOrderPage: React.FC = () => {
                            setState(st);
                            setPostcode(p);
 
-                           // Abrir Google Maps con la ubicación exacta
-                           const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}&z=17`;
-                           window.open(mapsUrl, '_blank');
+                           // NOTAS: No abrimos Google Maps automáticamente porque en móviles
+                           // la app de Maps toma el foco y el usuario no ve que se llenaron los campos
+                           // El usuario puede verificar las coordenadas en los campos de abajo si están visibles
 
-                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n🗺️ Google Maps se abrió en una nueva pestaña');
+                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n💡 Revisa los campos de arriba - ¡ya están completos!');
                          } catch (error) {
                            console.error('Error al obtener dirección:', error);
                            alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
@@ -513,7 +513,7 @@ const CreateOrderPage: React.FC = () => {
                marginTop: '0.5rem',
                textAlign: 'center'
              }}>
-               💡 Presiona "🛰️ Mi Ubicación" para obtener automáticamente tu ubicación GPS con calle, número, colonia y coordenadas. Se abrirá Google Maps.
+               💡 Presiona "🛰️ Mi Ubicación" para obtener automáticamente tu ubicación GPS con calle, número, colonia y coordenadas. Los campos se llenarán solos.
              </p>
            </div>
            
