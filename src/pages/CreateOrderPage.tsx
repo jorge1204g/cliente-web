@@ -463,8 +463,8 @@ const CreateOrderPage: React.FC = () => {
                              // 1. Llenar campo combinado de coordenadas
                              const coordsInput = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
                              if (coordsInput) {
-                               // Formato SIN espacio: "23.1742946,-102.8457795"
-                               const coordsValue = `${lat},${lng}`;
+                               // Formato CON espacio: "23.1742946, -102.8457795"
+                               const coordsValue = `${lat}, ${lng}`;
                                
                                // Método 1: Asignar valor directamente
                                coordsInput.value = coordsValue;
@@ -526,18 +526,7 @@ const CreateOrderPage: React.FC = () => {
                              console.log('💡 Ahora puedes presionar "📍 Buscar" manualmente o se buscará automáticamente');
                            }, 300);
 
-                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n⏳ Buscando tu ubicación en el mapa automáticamente...');
-                           
-                           // Después de cerrar el mensaje, buscar automáticamente en el mapa
-                           setTimeout(() => {
-                             const searchButton = Array.from(document.querySelectorAll('button')).find(
-                               btn => btn.textContent?.includes('📍 Buscar')
-                             ) as HTMLButtonElement;
-                             if (searchButton) {
-                               searchButton.click();
-                               console.log('✅ Búsqueda automática del mapa iniciada');
-                             }
-                           }, 1000);
+                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n💡 Ahora puedes ver el botón "✂️ Eliminar" junto al campo de coordenadas');
                          } catch (error) {
                            console.error('Error al obtener dirección:', error);
                            alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
