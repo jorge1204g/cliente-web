@@ -209,17 +209,21 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   // Manejar entrada de coordenadas
   const handleCoordinatesSearch = () => {
     try {
-      console.log('🔍 Coordenadas a validar:', coordinatesInput);
-      
       // Limpiar espacios y dividir por coma o espacio
       const cleanInput = coordinatesInput.trim();
+      
+      console.log('📝 Input limpio:', cleanInput);
       
       // Intentar múltiples formatos
       let lat: number, lng: number;
       
-      // Formato 1: "lat,lng" o "lat, lng" (con o sin espacio)
+      // Formato 1: "lat,lng" o "lat, lng" (con o sin espacio) - SOPORTA CUALQUIER CANTIDAD DE DÍGITOS
       if (cleanInput.includes(',')) {
         const parts = cleanInput.split(',');
+        console.log('📊 Formato detectado: lat,lng con', parts.length, 'partes');
+        console.log('   Parte 1 (lat):', parts[0].trim());
+        console.log('   Parte 2 (lng):', parts[1].trim());
+        
         lat = parseFloat(parts[0].trim());
         lng = parseFloat(parts[1].trim());
       } 
@@ -230,7 +234,8 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
         lng = parseFloat(parts[1].trim());
       }
       else {
-        alert('⚠️ Formato incorrecto. Usa: latitud, longitud (ejemplo: 23.156, -102.345)');
+        console.error('❌ Formato no reconocido. Input:', cleanInput);
+        alert('⚠️ Formato incorrecto. Usa: latitud, longitud (ejemplo: 23.156, -102.345)\n\nFormatos válidos:\n- Con coma: 23.174246,-102.845922\n- Con coma y espacio: 23.174246, -102.845922\n- Con espacio: 23.174246 -102.845922\n\nTu input: ' + cleanInput);
         return;
       }
       
@@ -239,14 +244,15 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
       // Validar que sean números válidos
       if (isNaN(lat) || isNaN(lng)) {
         console.error('❌ Coordenadas inválidas - NaN detected');
-        alert('⚠️ Por favor ingresa coordenadas válidas (ejemplo: 23.156, -102.345)');
+        const parts = cleanInput.split(',');
+        alert('⚠️ Por favor ingresa coordenadas válidas (ejemplo: 23.156, -102.345)\n\nSe intentó parsear:\n- Latitud: ' + parts[0]?.trim() + ' = ' + lat + '\n- Longitud: ' + parts[1]?.trim() + ' = ' + lng);
         return;
       }
       
       // Validar rangos
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         console.error('❌ Coordenadas fuera de rango:', lat, lng);
-        alert('⚠️ Coordenadas inválidas. Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.');
+        alert('⚠️ Coordenadas inválidas. Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.\n\nCoordenadas recibidas:\n- Latitud: ' + lat + '\n- Longitud: ' + lng);
         return;
       }
       
@@ -264,7 +270,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
       console.log(`✅ Coordenadas exitosas: ${lat}, ${lng}`);
     } catch (error) {
       console.error('❌ Error al procesar coordenadas:', error);
-      alert('❌ Error al procesar las coordenadas. Verifica el formato.');
+      alert('❌ Error al procesar las coordenadas. Verifica el formato.\n\nError: ' + (error instanceof Error ? error.message : String(error)) + '\n\nInput: ' + coordinatesInput);
     }
   };
 
