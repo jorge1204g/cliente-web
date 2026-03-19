@@ -486,7 +486,7 @@ const CreateOrderPage: React.FC = () => {
                  }}
                  disabled={loading}
                  style={{
-                   backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                   backgroundColor: loading ? '#9ca3af' : '#10b981',
                    color: 'white',
                    border: 'none',
                    padding: '0.75rem 1.5rem',
@@ -500,8 +500,8 @@ const CreateOrderPage: React.FC = () => {
                    gap: '0.5rem',
                    transition: 'background-color 0.2s'
                  }}
-                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
                  title="Obtener mi ubicación GPS y llenar los campos automáticamente"
                >
                  {loading ? '🛰️ Obteniendo...' : '🛰️ Mi Ubicación'}
