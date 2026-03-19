@@ -30,7 +30,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [coordinatesInput, setCoordinatesInput] = useState('');
-  const [showDeleteLastDigitButton, setShowDeleteLastDigitButton] = useState(false);
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -280,7 +279,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     if (coordinatesInput.length > 0) {
       const newValue = coordinatesInput.slice(0, -1);
       setCoordinatesInput(newValue);
-      setShowDeleteLastDigitButton(newValue.length > 0);
       
       console.log(`✂️ Último dígito eliminado: "${coordinatesInput}" → "${newValue}"`);
       
@@ -603,29 +601,32 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
                 }
               }}
             />
-            {showDeleteLastDigitButton && (
-              <button
-                type="button"
-                onClick={handleDeleteLastDigit}
-                title="Eliminar último dígito"
-                style={{
-                  backgroundColor: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '0.5rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  whiteSpace: 'nowrap',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-              >
-                ✂️ Eliminar
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleDeleteLastDigit}
+              title="Eliminar último dígito"
+              disabled={!coordinatesInput}
+              style={{
+                backgroundColor: !coordinatesInput ? '#9ca3af' : '#dc2626',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.5rem',
+                fontWeight: '600',
+                cursor: coordinatesInput ? 'pointer' : 'not-allowed',
+                fontSize: '0.85rem',
+                whiteSpace: 'nowrap',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {
+                if (coordinatesInput) e.currentTarget.style.backgroundColor = '#b91c1c';
+              }}
+              onMouseOut={(e) => {
+                if (coordinatesInput) e.currentTarget.style.backgroundColor = '#dc2626';
+              }}
+            >
+              ✂️ Eliminar
+            </button>
             <button
               type="button"
               onClick={handleCoordinatesSearch}

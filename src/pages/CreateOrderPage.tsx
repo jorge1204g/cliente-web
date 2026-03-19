@@ -489,13 +489,6 @@ const CreateOrderPage: React.FC = () => {
                                console.log(`✅ Coordenadas pegadas automáticamente en campo combinado: ${coordsValue}`);
                              }
                              
-                             // Mostrar botón de eliminar último dígito
-                             const deleteButton = document.querySelector('button[title="Eliminar último dígito"]') as HTMLButtonElement;
-                             if (deleteButton) {
-                               deleteButton.style.display = 'inline-block';
-                               console.log('✅ Botón "✂️ Eliminar" mostrado');
-                             }
-                             
                              // 2. Llenar campos separados de Latitud y Longitud
                              const latitudeInput = document.querySelector('input[placeholder="Ej: 23.174257"]') as HTMLInputElement;
                              const longitudeInput = document.querySelector('input[placeholder="Ej: -102.845951"]') as HTMLInputElement;
