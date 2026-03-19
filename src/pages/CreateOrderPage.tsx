@@ -490,7 +490,18 @@ const CreateOrderPage: React.FC = () => {
                              }
                            }, 200);
 
-                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n📍 Tus coordenadas se pegaron en "O ingresa coordenadas exactas"\n💡 Formato: ' + lat + ',' + lng + ' (sin espacio)\n💡 Ahora presiona "📍 Buscar" manualmente para ver tu ubicación en el mapa');
+                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n⏳ Buscando tu ubicación en el mapa automáticamente...');
+                           
+                           // Después de cerrar el mensaje, buscar automáticamente en el mapa
+                           setTimeout(() => {
+                             const searchButton = Array.from(document.querySelectorAll('button')).find(
+                               btn => btn.textContent?.includes('📍 Buscar')
+                             ) as HTMLButtonElement;
+                             if (searchButton) {
+                               searchButton.click();
+                               console.log('✅ Búsqueda automática del mapa iniciada');
+                             }
+                           }, 1000);
                          } catch (error) {
                            console.error('Error al obtener dirección:', error);
                            alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
