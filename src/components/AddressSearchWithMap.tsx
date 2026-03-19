@@ -30,6 +30,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [coordinatesInput, setCoordinatesInput] = useState('');
+  const [showDeleteLastDigitButton, setShowDeleteLastDigitButton] = useState(false);
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -271,6 +272,29 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     } catch (error) {
       console.error('❌ Error al procesar coordenadas:', error);
       alert('❌ Error al procesar las coordenadas. Verifica el formato.\n\nError: ' + (error instanceof Error ? error.message : String(error)) + '\n\nInput: ' + coordinatesInput);
+    }
+  };
+
+  // Eliminar último dígito de las coordenadas
+  const handleDeleteLastDigit = () => {
+    if (coordinatesInput.length > 0) {
+      const newValue = coordinatesInput.slice(0, -1);
+      setCoordinatesInput(newValue);
+      setShowDeleteLastDigitButton(newValue.length > 0);
+      
+      console.log(`✂️ Último dígito eliminado: "${coordinatesInput}" → "${newValue}"`);
+      
+      // Actualizar también los campos separados si existen
+      const lastCommaIndex = newValue.lastIndexOf(',');
+      if (lastCommaIndex !== -1) {
+        const lat = newValue.substring(0, lastCommaIndex).trim();
+        const lng = newValue.substring(lastCommaIndex + 1).trim();
+        
+        setLatitudeInput(lat);
+        setLongitudeInput(lng);
+        
+        console.log(`📊 Campos actualizados: Lat=${lat}, Lng=${lng}`);
+      }
     }
   };
 
@@ -579,6 +603,29 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
                 }
               }}
             />
+            {showDeleteLastDigitButton && (
+              <button
+                type="button"
+                onClick={handleDeleteLastDigit}
+                title="Eliminar último dígito"
+                style={{
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.5rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  whiteSpace: 'nowrap',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+              >
+                ✂️ Eliminar
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCoordinatesSearch}
