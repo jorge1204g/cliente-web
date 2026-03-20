@@ -369,6 +369,8 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
         </p>
       </div>
 
+      {/* OCULTO - Sección de coordenadas separadas ya no usada */}
+      {/*
       <div style={{ 
         padding: '1rem', 
         backgroundColor: '#f0f9ff', 
