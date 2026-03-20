@@ -61,16 +61,16 @@ const CreateOrderPage: React.FC = () => {
   const [favorType, setFavorType] = useState('');
   const [pickupLocationForFavor, setPickupLocationForFavor] = useState('');
   
-  // ¿Requiere recogida?
-  const [requiresPickup, setRequiresPickup] = useState(false);
-  const [pickupAddress, setPickupAddress] = useState('');
-  const [pickupName, setPickupName] = useState('');
-  const [pickupUrl, setPickupUrl] = useState('');
+  // OCULTO - Estados ya no usados porque ocultamos las secciones de recogida y detalles
+  const [requiresPickup, setRequiresPickup] = useState(false); // No usado
+  const [pickupAddress, setPickupAddress] = useState(''); // No usado
+  const [pickupName, setPickupName] = useState(''); // No usado
+  const [pickupUrl, setPickupUrl] = useState(''); // No usado
   
   // Detalles del pedido
   const [items, setItems] = useState('');
-  const [notes, setNotes] = useState('');
-  const [confirmationCode, setConfirmationCode] = useState('');
+  const [notes, setNotes] = useState(''); // No usado
+  const [confirmationCode, setConfirmationCode] = useState(''); // No usado
   
   // Estados
   const [loading, setLoading] = useState(false);
@@ -110,10 +110,11 @@ const CreateOrderPage: React.FC = () => {
       return;
     }
 
-    if (requiresPickup && !pickupAddress) {
-      setError('Por favor ingresa la dirección de recogida');
-      return;
-    }
+    // OCULTO - Validación de recogida ya no necesaria
+    // if (requiresPickup && !pickupAddress) {
+    //   setError('Por favor ingresa la dirección de recogida');
+    //   return;
+    // }
 
     setLoading(true);
 
@@ -157,11 +158,12 @@ const CreateOrderPage: React.FC = () => {
       serviceType,
       status: 'PENDING',
       createdAt: Date.now(),
-      ...(requiresPickup && {
-        pickupAddress,
-        pickupName,
-        pickupUrl
-      }),
+      // OCULTO - Datos de recogida ya no se envían
+      // ...(requiresPickup && {
+      //   pickupAddress,
+      //   pickupName,
+      //   pickupUrl
+      // }),
       // Construir dirección de entrega con todos los campos
       deliveryAddress: `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
       deliveryLocation: {
@@ -219,9 +221,8 @@ const CreateOrderPage: React.FC = () => {
       // Si no es ningún tipo específico, usar items genérico
       ...(!['FOOD', 'GASOLINE', 'STATIONERY', 'MEDICINES', 'BEVERAGES', 'WATER', 'GAS', 'PAYMENTS', 'FAVORS'].includes(serviceType) && {
         items
-      }),
-      notes,
-    confirmationCode // Agregar código de confirmación
+      })
+      // OCULTO - Notas y código ya no se incluyen
     };
 
       console.log('📦 Creando pedido con datos:', {
@@ -1204,8 +1205,8 @@ const CreateOrderPage: React.FC = () => {
             </section>
           )}
 
-          {/* Recogida (Opcional) */}
-          <section style={{ marginBottom: '2rem' }}>
+          {/* OCULTO - Recogida (Opcional) */}
+          {/* <section style={{ marginBottom: '2rem' }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
@@ -1258,10 +1259,10 @@ const CreateOrderPage: React.FC = () => {
                 </div>
               </div>
             )}
-          </section>
+          </section> */}
 
-          {/* Detalles del Pedido */}
-          <section style={{ marginBottom: '2rem' }}>
+          {/* OCULTO - Detalles del Pedido */}
+          {/* <section style={{ marginBottom: '2rem' }}>
             <h2 style={{
               fontSize: '1.25rem',
               fontWeight: 'bold',
@@ -1341,7 +1342,7 @@ const CreateOrderPage: React.FC = () => {
                 </button>
               )}
             </div>
-          </section>
+          </section> */}
 
           {/* Error Message */}
           {error && (
