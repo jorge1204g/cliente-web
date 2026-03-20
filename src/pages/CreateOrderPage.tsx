@@ -1058,11 +1058,10 @@ const CreateOrderPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>🚬 Marcas de Cigarros *</label>
+                    <label style={labelStyle}>🚬 Marcas de Cigarros (opcional)</label>
                     <textarea
                       value={cigaretteBrands}
                       onChange={(e) => setCigaretteBrands(e.target.value)}
-                      required
                       style={{ ...inputStyle, minHeight: '60px' }}
                       placeholder="Ej. Marlboro rojo 2 cajas, Camel blue 1 caja..."
                     />
