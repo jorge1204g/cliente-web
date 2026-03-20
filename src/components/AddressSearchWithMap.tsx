@@ -34,11 +34,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
-  
-  // Estados para campos separados de latitud y longitud
-  const [latitudeInput, setLatitudeInput] = useState('');
-  const [longitudeInput, setLongitudeInput] = useState('');
-  const [isEditingLatitude, setIsEditingLatitude] = useState(false);
 
   // Cargar librería de Places
   useEffect(() => {
@@ -281,18 +276,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
       setCoordinatesInput(newValue);
       
       console.log(`✂️ Último dígito eliminado: "${coordinatesInput}" → "${newValue}"`);
-      
-      // Actualizar también los campos separados si existen
-      const lastCommaIndex = newValue.lastIndexOf(',');
-      if (lastCommaIndex !== -1) {
-        const lat = newValue.substring(0, lastCommaIndex).trim();
-        const lng = newValue.substring(lastCommaIndex + 1).trim();
-        
-        setLatitudeInput(lat);
-        setLongitudeInput(lng);
-        
-        console.log(`📊 Campos actualizados: Lat=${lat}, Lng=${lng}`);
-      }
     }
   };
 
@@ -308,73 +291,12 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     return () => window.removeEventListener('force-coordinates-update' as any, handleForceUpdate as any);
   }, []);
 
-  // Manejar campos separados de latitud y longitud
-  const handleLatitudeChange = (value: string) => {
-    setLatitudeInput(value);
-    setIsEditingLatitude(true);
-    
-    // Si el valor es válido, actualizar también el campo combinado
-    const lat = parseFloat(value);
-    const lng = parseFloat(longitudeInput);
-    
-    if (!isNaN(lat) && !isNaN(lng) && longitudeInput) {
-      setCoordinatesInput(`${value},${longitudeInput}`);
-    }
-  };
-
-  const handleLongitudeChange = (value: string) => {
-    setLongitudeInput(value);
-    
-    // Si el valor es válido, actualizar también el campo combinado
-    const lat = parseFloat(latitudeInput);
-    const lng = parseFloat(value);
-    
-    if (!isNaN(lat) && !isNaN(lng) && latitudeInput) {
-      setCoordinatesInput(`${latitudeInput},${value}`);
-    }
-  };
-
-  // Manejar borrado del último dígito de latitud para moverlo a longitud
-  const handleLatitudeBlur = () => {
-    if (isEditingLatitude && latitudeInput.length > 0) {
-      const lastChar = latitudeInput.slice(-1);
-      const newLat = latitudeInput.slice(0, -1);
-      
-      // Solo mover si el último caracter es un dígito
-      if (/[0-9]/.test(lastChar)) {
-        // Mover el último dígito al inicio de la longitud
-        const newLng = lastChar + longitudeInput;
-        
-        setLatitudeInput(newLat);
-        setLongitudeInput(newLng);
-        setCoordinatesInput(`${newLat},${newLng}`);
-        
-        console.log(`🔄 Dígito movido: ${lastChar} de latitud a longitud`);
-        console.log(`Nueva latitud: ${newLat}, Nueva longitud: ${newLng}`);
-        
-        // Buscar automáticamente después de mover el dígito
-        setTimeout(() => {
-          handleCoordinatesSearch();
-        }, 300);
-      }
-    }
-    setIsEditingLatitude(false);
-  };
-
-  const handleLongitudeBlur = () => {
-    // No action needed
-  };
-
-  // Actualizar campos separados cuando cambian las coordenadas combinadas
-  useEffect(() => {
-    if (coordinatesInput && coordinatesInput.includes(',')) {
-      const parts = coordinatesInput.split(',');
-      if (parts.length === 2) {
-        setLatitudeInput(parts[0].trim());
-        setLongitudeInput(parts[1].trim());
-      }
-    }
-  }, [coordinatesInput]);
+  // OCULTO - Funciones ya no usadas porque ocultamos los campos separados
+  // const handleLatitudeChange = (value: string) => {...}
+  // const handleLongitudeChange = (value: string) => {...}
+  // const handleLatitudeBlur = () => {...}
+  // const handleLongitudeBlur = () => {...}
+  // OCULTO - useEffect ya no usado
 
   // Cargar mapa manualmente
   useEffect(() => {
@@ -423,31 +345,28 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      {/* Campo de búsqueda con autocompletado de Google Places (NUEVA API) */}
-      <div style={{ position: 'relative', marginBottom: '1rem' }}>
-        <label style={{
-          display: 'block',
-          fontSize: '0.875rem',
-          fontWeight: '600',
-          color: '#374151',
-          marginBottom: '0.5rem'
-        }}>
-          🔍 O busca tu dirección manualmente:
-        </label>
-        
-        {/* Contenedor para PlaceAutocompleteElement */}
-        <div ref={autocompleteRef} id="place-autocomplete"></div>
+      {/* OCULTO - Secciones no necesarias para pantalla limpia */}
+      {/* 
+      <label style={{
+        fontSize: '0.875rem',
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: '0.5rem'
+      }}>
+        🔍 O busca tu dirección manualmente:
+      </label>
+      
+      <div ref={autocompleteRef} id="place-autocomplete"></div>
 
-        <p style={{
-          fontSize: '0.75rem',
-          color: '#6b7280',
-          marginTop: '0.5rem'
-        }}>
-          💡 Escribe tu dirección y selecciona de las sugerencias
-        </p>
-      </div>
+      <p style={{
+        fontSize: '0.75rem',
+        color: '#6b7280',
+        marginTop: '0.5rem'
+      }}>
+        💡 Escribe tu dirección y selecciona de las sugerencias
+      </p>
+    </div>
 
-      {/* Filtro de coordenadas separadas - Latitud y Longitud */}
       <div style={{ 
         padding: '1rem', 
         backgroundColor: '#f0f9ff', 
@@ -466,7 +385,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
         </label>
         
         <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          {/* Campo de Latitud */}
           <div>
             <label style={{
               display: 'block',
@@ -503,7 +421,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
             </p>
           </div>
 
-          {/* Campo de Longitud */}
           <div>
             <label style={{
               display: 'block',
@@ -541,7 +458,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
           </div>
         </div>
 
-        {/* Botón de acción rápida */}
         <div style={{ marginTop: '1rem', textAlign: 'center' }}>
           <button
             type="button"
@@ -566,8 +482,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               fontSize: '0.875rem',
               transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0ea5e9'}
           >
             🔗 Unir Coordenadas y Buscar
           </button>
@@ -580,8 +494,9 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
           </p>
         </div>
       </div>
+      */}
 
-      {/* Campo de coordenadas */}
+      {/* Campo de coordenadas combinadas */}
       <div style={{ marginBottom: '1rem' }}>
           <label style={{
             display: 'block',
