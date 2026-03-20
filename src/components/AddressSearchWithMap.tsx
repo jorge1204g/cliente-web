@@ -340,27 +340,34 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      {/* OCULTO - Secciones no necesarias para pantalla limpia */}
-      {/* 
-      <label style={{
-        fontSize: '0.875rem',
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: '0.5rem'
+      {/* BÚSQUEDA DE DIRECCIÓN CON AUTOCOMPLETADO */}
+      <div style={{
+        padding: '1rem',
+        backgroundColor: '#f0f9ff',
+        borderRadius: '0.5rem',
+        border: '2px solid #0ea5e9',
+        marginBottom: '1rem'
       }}>
-        🔍 O busca tu dirección manualmente:
-      </label>
-      
-      <div ref={autocompleteRef} id="place-autocomplete"></div>
+        <label style={{
+          display: 'block',
+          fontSize: '0.875rem',
+          fontWeight: '600',
+          color: '#0369a1',
+          marginBottom: '0.75rem'
+        }}>
+          🔍 Escribe la dirección exacta:
+        </label>
+        
+        <div ref={autocompleteRef} id="place-autocomplete" style={{ marginBottom: '0.5rem' }}></div>
 
-      <p style={{
-        fontSize: '0.75rem',
-        color: '#6b7280',
-        marginTop: '0.5rem'
-      }}>
-        💡 Escribe tu dirección y selecciona de las sugerencias
-      </p>
-    </div>
+        <p style={{
+          fontSize: '0.75rem',
+          color: '#6b7280',
+          marginTop: '0.5rem'
+        }}>
+          💡 Escribe calle, número y colonia - Selecciona de las sugerencias
+        </p>
+      </div>
 
       <div style={{ 
         padding: '1rem', 
