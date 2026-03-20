@@ -709,6 +709,38 @@ const CreateOrderPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Confirmación de Dirección - Mensaje Verde */}
+            {(street && houseNumber && suburb && city && state && postcode) && (
+              <div style={{
+                marginTop: '1.5rem',
+                padding: '1.25rem',
+                backgroundColor: '#d1fae5',
+                borderRadius: '0.5rem',
+                border: '2px solid #10b981',
+                textAlign: 'center'
+              }}>
+                <p style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  color: '#065f46',
+                  margin: 0,
+                  lineHeight: '1.5'
+                }}>
+                  ✅ ¡TU DIRECCIÓN ES:
+                </p>
+                <p style={{
+                  fontSize: '1rem',
+                  color: '#047857',
+                  margin: '0.75rem 0 0 0',
+                  fontWeight: '600'
+                }}>
+                  {street} #{houseNumber}, {suburb}
+                  <br />
+                  {city}, {state} {postcode}
+                </p>
+              </div>
+            )}
+
             {/* Coordenadas GPS */}
             {(deliveryLat !== null || deliveryLng !== null) && (
               <div style={{
