@@ -194,89 +194,10 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     }
   };
 
-  // Manejar entrada de coordenadas
-  const handleCoordinatesSearch = () => {
-    try {
-      // Limpiar espacios y dividir por coma o espacio
-      const cleanInput = coordinatesInput.trim();
-      
-      console.log('📝 Input limpio:', cleanInput);
-      
-      // Intentar múltiples formatos
-      let lat: number, lng: number;
-      
-      // Formato 1: "lat,lng" o "lat, lng" (con o sin espacio) - SOPORTA CUALQUIER CANTIDAD DE DÍGITOS
-      if (cleanInput.includes(',')) {
-        const parts = cleanInput.split(',');
-        console.log('📊 Formato detectado: lat,lng con', parts.length, 'partes');
-        console.log('   Parte 1 (lat):', parts[0].trim());
-        console.log('   Parte 2 (lng):', parts[1].trim());
-        
-        lat = parseFloat(parts[0].trim());
-        lng = parseFloat(parts[1].trim());
-      } 
-      // Formato 2: "lat lng" (solo espacio)
-      else if (cleanInput.includes(' ')) {
-        const parts = cleanInput.split(/\s+/);
-        lat = parseFloat(parts[0].trim());
-        lng = parseFloat(parts[1].trim());
-      }
-      else {
-        console.error('❌ Formato no reconocido. Input:', cleanInput);
-        alert('⚠️ Formato incorrecto. Usa: latitud, longitud (ejemplo: 23.156, -102.345)\n\nFormatos válidos:\n- Con coma: 23.174246,-102.845922\n- Con coma y espacio: 23.174246, -102.845922\n- Con espacio: 23.174246 -102.845922\n\nTu input: ' + cleanInput);
-        return;
-      }
-      
-      console.log('✅ Latitud parseada:', lat, 'Longitud parseada:', lng);
-      
-      // Validar que sean números válidos
-      if (isNaN(lat) || isNaN(lng)) {
-        console.error('❌ Coordenadas inválidas - NaN detected');
-        const parts = cleanInput.split(',');
-        alert('⚠️ Por favor ingresa coordenadas válidas (ejemplo: 23.156, -102.345)\n\nSe intentó parsear:\n- Latitud: ' + parts[0]?.trim() + ' = ' + lat + '\n- Longitud: ' + parts[1]?.trim() + ' = ' + lng);
-        return;
-      }
-      
-      // Validar rangos
-      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        console.error('❌ Coordenadas fuera de rango:', lat, lng);
-        alert('⚠️ Coordenadas inválidas. Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.\n\nCoordenadas recibidas:\n- Latitud: ' + lat + '\n- Longitud: ' + lng);
-        return;
-      }
-      
-      // Mover el mapa a las coordenadas
-      setSelectedLocation({ lat, lng });
-      
-      if (mapInstance) {
-        mapInstance.panTo({ lat, lng });
-        mapInstance.setZoom(16);
-      }
-      
-      // Hacer geocodificación inversa para obtener la dirección
-      reverseGeocode(lat, lng);
-      
-      console.log(`✅ Coordenadas exitosas: ${lat}, ${lng}`);
-    } catch (error) {
-      console.error('❌ Error al procesar coordenadas:', error);
-      alert('❌ Error al procesar las coordenadas. Verifica el formato.\n\nError: ' + (error instanceof Error ? error.message : String(error)) + '\n\nInput: ' + coordinatesInput);
-    }
-  };
-
-  // OCULTO - Función ya no usada porque ocultamos el botón Eliminar
+  // OCULTO - Funciones ya no usadas
+  // const handleCoordinatesSearch = () => {...}
   // const handleDeleteLastDigit = () => {...}
-
-  // Función expuesta para actualizar coordenadas desde fuera (GPS)
-  useEffect(() => {
-    // Escuchar eventos personalizados para actualización forzada
-    const handleForceUpdate = (event: CustomEvent<{ value: string }>) => {
-      console.log('🔄 Evento personalizado recibido:', event.detail.value);
-      setCoordinatesInput(event.detail.value);
-      setHasGPSCoords(true); // Activar mensaje
-    };
-    
-    window.addEventListener('force-coordinates-update' as any, handleForceUpdate as any);
-    return () => window.removeEventListener('force-coordinates-update' as any, handleForceUpdate as any);
-  }, []);
+  // useEffect para GPS ya no es necesario
 
   // OCULTO - Funciones ya no usadas porque ocultamos los campos separados
   // const handleLatitudeChange = (value: string) => {...}
