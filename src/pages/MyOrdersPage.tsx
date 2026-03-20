@@ -488,6 +488,120 @@ const MyOrdersPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* INFORMACIÓN IMPORTANTE - Costo, Repartidor y Código */}
+              {(order.deliveryCost || order.assignedToDeliveryId || order.confirmationCode) && (
+                <div style={{
+                  display: 'grid',
+                  gap: '1rem',
+                  marginBottom: '1rem'
+                }}>
+                  {/* Costo de envío y Distancia */}
+                  {(order.distanceKm || order.deliveryCost) && (
+                    <div style={{
+                      display: 'flex',
+                      gap: '1.5rem',
+                      padding: '0.75rem',
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #bfdbfe'
+                    }}>
+                      {order.distanceKm && (
+                        <div>
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: '#1e40af',
+                            fontWeight: '600'
+                          }}>
+                            📏 Distancia
+                          </p>
+                          <p style={{
+                            color: '#1e40af',
+                            fontWeight: 'bold'
+                          }}>
+                            {order.distanceKm.toFixed(2)} km
+                          </p>
+                        </div>
+                      )}
+                      {order.deliveryCost && (
+                        <div>
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: '#1e40af',
+                            fontWeight: '600'
+                          }}>
+                            💰 Costo de envío
+                          </p>
+                          <p style={{
+                            color: '#1e40af',
+                            fontWeight: 'bold'
+                          }}>
+                            ${order.deliveryCost.toFixed(2)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Repartidor asignado */}
+                  {order.assignedToDeliveryId && order.deliveryPersonName && (
+                    <div style={{
+                      padding: '0.75rem',
+                      backgroundColor: '#d1fae5',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #10b981'
+                    }}>
+                      <p style={{
+                        fontSize: '0.875rem',
+                        color: '#065f46',
+                        fontWeight: '600',
+                        marginBottom: '0.25rem'
+                      }}>
+                        🚚 Repartidor asignado
+                      </p>
+                      <p style={{ color: '#065f46', fontWeight: 'bold' }}>
+                        {order.deliveryPersonName}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Código de Confirmación */}
+                  {order.confirmationCode && (
+                    <div style={{
+                      padding: '1rem',
+                      backgroundColor: '#f8f0ff',
+                      borderRadius: '0.5rem',
+                      border: '2px solid #6f42c1',
+                      textAlign: 'center'
+                    }}>
+                      <p style={{
+                        fontSize: '0.875rem',
+                        color: '#6f42c1',
+                        fontWeight: '600',
+                        marginBottom: '0.5rem'
+                      }}>
+                        🎫 Código de Confirmación del Pedido
+                      </p>
+                      <p style={{
+                        fontSize: '2.5rem',
+                        fontWeight: 'bold',
+                        color: '#6f42c1',
+                        letterSpacing: '0.75rem',
+                        margin: '0.5rem 0'
+                      }}>
+                        {order.confirmationCode}
+                      </p>
+                      <p style={{
+                        fontSize: '0.75rem',
+                        color: '#6f42c1',
+                        marginTop: '0.5rem'
+                      }}>
+                        ℹ️ Proporciona este código al repartidor para finalizar la entrega
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Timeline de Estado del Pedido */}
               <OrderStatusTimeline status={order.status} />
 
@@ -523,110 +637,6 @@ const MyOrdersPage: React.FC = () => {
                     </p>
                     <p style={{ color: '#1f2937', fontSize: '0.875rem' }}>
                       {order.items}
-                    </p>
-                  </div>
-                )}
-
-                {(order.distanceKm || order.deliveryCost) && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '1.5rem',
-                    padding: '0.75rem',
-                    backgroundColor: '#eff6ff',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #bfdbfe'
-                  }}>
-                    {order.distanceKm && (
-                      <div>
-                        <p style={{
-                          fontSize: '0.75rem',
-                          color: '#1e40af',
-                          fontWeight: '600'
-                        }}>
-                          📏 Distancia
-                        </p>
-                        <p style={{
-                          color: '#1e40af',
-                          fontWeight: 'bold'
-                        }}>
-                          {order.distanceKm.toFixed(2)} km
-                        </p>
-                      </div>
-                    )}
-                    {order.deliveryCost && (
-                      <div>
-                        <p style={{
-                          fontSize: '0.75rem',
-                          color: '#1e40af',
-                          fontWeight: '600'
-                        }}>
-                          💰 Costo de envío
-                        </p>
-                        <p style={{
-                          color: '#1e40af',
-                          fontWeight: 'bold'
-                        }}>
-                          ${order.deliveryCost.toFixed(2)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {order.assignedToDeliveryId && order.deliveryPersonName && (
-                  <div style={{
-                    padding: '0.75rem',
-                    backgroundColor: '#d1fae5',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #10b981'
-                  }}>
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: '#065f46',
-                      fontWeight: '600',
-                      marginBottom: '0.25rem'
-                    }}>
-                      🚚 Repartidor asignado
-                    </p>
-                    <p style={{ color: '#065f46', fontWeight: 'bold' }}>
-                      {order.deliveryPersonName}
-                    </p>
-                  </div>
-                )}
-
-                {/* Código de Confirmación */}
-                {order.confirmationCode && (
-                  <div style={{
-                    padding: '1rem',
-                    backgroundColor: '#f8f0ff',
-                    borderRadius: '0.5rem',
-                    border: '2px solid #6f42c1',
-                    textAlign: 'center',
-                    marginTop: '1rem'
-                  }}>
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: '#6f42c1',
-                      fontWeight: '600',
-                      marginBottom: '0.5rem'
-                    }}>
-                      🎫 Código de Confirmación del Pedido
-                    </p>
-                    <p style={{
-                      fontSize: '2.5rem',
-                      fontWeight: 'bold',
-                      color: '#6f42c1',
-                      letterSpacing: '0.75rem',
-                      margin: '0.5rem 0'
-                    }}>
-                      {order.confirmationCode}
-                    </p>
-                    <p style={{
-                      fontSize: '0.75rem',
-                      color: '#6f42c1',
-                      marginTop: '0.5rem'
-                    }}>
-                      ℹ️ Proporciona este código al repartidor para finalizar la entrega
                     </p>
                   </div>
                 )}

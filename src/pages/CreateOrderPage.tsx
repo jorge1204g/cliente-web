@@ -60,6 +60,8 @@ const CreateOrderPage: React.FC = () => {
   // 🎁 FAVORS - Favores
   const [favorType, setFavorType] = useState('');
   const [pickupLocationForFavor, setPickupLocationForFavor] = useState('');
+  const [pickupLat, setPickupLat] = useState<number | null>(null);
+  const [pickupLng, setPickupLng] = useState<number | null>(null);
   
   // OCULTO - Variables necesarias para el código pero no usadas en UI visible
   const [_requiresPickup, _setRequiresPickup] = useState(false);
@@ -1167,12 +1169,11 @@ const CreateOrderPage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>🏢 Proveedor del Servicio *</label>
+                    <label style={labelStyle}>🏢 Proveedor del Servicio (opcional)</label>
                     <input
                       type="text"
                       value={serviceProvider}
                       onChange={(e) => setServiceProvider(e.target.value)}
-                      required
                       style={inputStyle}
                       placeholder="Ej. CFE, Telcel, Municipio, etc."
                     />
@@ -1217,17 +1218,94 @@ const CreateOrderPage: React.FC = () => {
                       placeholder="Describe el favor o regalo que necesitas..."
                     />
                   </div>
+                  
+                  {/* Campo de búsqueda de dirección con mapa para recogida */}
                   <div>
-                    <label style={labelStyle}>📍 Dirección de Recogida *</label>
+                    <label style={{ ...labelStyle, color: '#10b981', fontWeight: 'bold' }}>
+                      📍 Dirección Exacta de Recogida (usa el mapa)
+                    </label>
+                    <div style={{
+                      padding: '1rem',
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '0.5rem',
+                      border: '2px solid #3b82f6',
+                      marginBottom: '1rem'
+                    }}>
+                      <AddressSearchWithMap
+                        onAddressSelect={(data) => {
+                          setPickupLat(data.lat);
+                          setPickupLng(data.lng);
+                          setPickupLocationForFavor(`${data.street} ${data.houseNumber}, ${data.suburb}, ${data.city}, ${data.state} ${data.postcode}`);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Coordenadas GPS de recogida */}
+                  {(pickupLat !== null || pickupLng !== null) && (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '1rem',
+                      marginBottom: '1rem',
+                      padding: '1rem',
+                      backgroundColor: '#dbeafe',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #93c5fd'
+                    }}>
+                      <div>
+                        <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                          🌎 Latitud de Recogida
+                        </label>
+                        <input
+                          type="text"
+                          value={pickupLat !== null ? pickupLat.toString() : ''}
+                          readOnly
+                          style={{
+                            ...inputStyle,
+                            backgroundColor: '#bfdbfe',
+                            border: '1px solid #60a5fa',
+                            fontWeight: '600',
+                            color: '#1e40af'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                          🧭 Longitud de Recogida
+                        </label>
+                        <input
+                          type="text"
+                          value={pickupLng !== null ? pickupLng.toString() : ''}
+                          readOnly
+                          style={{
+                            ...inputStyle,
+                            backgroundColor: '#bfdbfe',
+                            border: '1px solid #60a5fa',
+                            fontWeight: '600',
+                            color: '#1e40af'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Campo de texto tradicional (opcional, como referencia) */}
+                  <div>
+                    <label style={labelStyle}>📝 Dirección de Recogida (texto)</label>
                     <input
                       type="text"
                       value={pickupLocationForFavor}
                       onChange={(e) => setPickupLocationForFavor(e.target.value)}
-                      required
                       style={inputStyle}
-                      placeholder="Dirección completa donde recoger el regalo/favor"
+                      placeholder="La dirección se llena automáticamente desde el mapa"
+                      readOnly
                     />
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                      💡 Esta dirección se genera automáticamente al seleccionar una ubicación en el mapa
+                    </p>
                   </div>
+
                   <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                     ℹ️ El repartidor recogerá en la dirección indicada y entregará en tu domicilio
                   </p>
