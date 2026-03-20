@@ -780,34 +780,56 @@ const CreateOrderPage: React.FC = () => {
               gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
               gap: '0.75rem'
             }}>
-              {serviceTypes.map((service) => (
-                <div
-                  key={service.value}
-                  onClick={() => setServiceType(service.value)}
-                  style={{
-                    padding: '1rem',
-                    border: serviceType === service.value 
-                      ? '2px solid #667eea' 
-                      : '2px solid #e5e7eb',
-                    borderRadius: '0.5rem',
-                    cursor: 'pointer',
-                    backgroundColor: serviceType === service.value 
-                      ? '#eff6ff' 
-                      : 'white',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
-                    {service.label.split(' ')[0]}
+              {serviceTypes.map((service) => {
+                const isSelected = serviceType === service.value;
+                
+                // Si ya hay un servicio seleccionado y este no es, no lo mostrar
+                if (serviceType && !isSelected) {
+                  return null;
+                }
+                
+                return (
+                  <div
+                    key={service.value}
+                    onClick={() => {
+                      // Toggle: si ya está seleccionado, deseleccionar
+                      setServiceType(isSelected ? '' : service.value);
+                    }}
+                    style={{
+                      padding: '1rem',
+                      border: isSelected 
+                        ? '2px solid #667eea' 
+                        : '2px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      backgroundColor: isSelected 
+                        ? '#eff6ff' 
+                        : 'white',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
+                      {service.label.split(' ')[0]}
+                    </div>
+                    <div style={{ fontWeight: '600', color: '#1f2937' }}>
+                      {service.label.split(' ').slice(1).join(' ')}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {service.icon}
+                    </div>
+                    {isSelected && (
+                      <div style={{ 
+                        marginTop: '0.5rem', 
+                        fontSize: '0.75rem', 
+                        color: '#667eea',
+                        fontWeight: 'bold'
+                      }}>
+                        ✓ Seleccionado - Click para quitar
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontWeight: '600', color: '#1f2937' }}>
-                    {service.label.split(' ').slice(1).join(' ')}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                    {service.icon}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 
