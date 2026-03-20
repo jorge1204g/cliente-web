@@ -29,6 +29,8 @@ const center = {
 const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect }) => {
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
+  const [coordinatesInput, setCoordinatesInput] = useState('');
+  const [hasGPSCoords, setHasGPSCoords] = useState(false); // Para mostrar mensaje después de GPS
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -201,8 +203,88 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   };
 
   // Manejar entrada de coordenadas
+  const handleCoordinatesSearch = () => {
+    try {
+      // Limpiar espacios y dividir por coma o espacio
+      const cleanInput = coordinatesInput.trim();
+      
+      console.log('📝 Input limpio:', cleanInput);
+      
+      // Intentar múltiples formatos
+      let lat: number, lng: number;
+      
+      // Formato 1: "lat,lng" o "lat, lng" (con o sin espacio) - SOPORTA CUALQUIER CANTIDAD DE DÍGITOS
+      if (cleanInput.includes(',')) {
+        const parts = cleanInput.split(',');
+        console.log('📊 Formato detectado: lat,lng con', parts.length, 'partes');
+        console.log('   Parte 1 (lat):', parts[0].trim());
+        console.log('   Parte 2 (lng):', parts[1].trim());
+        
+        lat = parseFloat(parts[0].trim());
+        lng = parseFloat(parts[1].trim());
+      } 
+      // Formato 2: "lat lng" (solo espacio)
+      else if (cleanInput.includes(' ')) {
+        const parts = cleanInput.split(/\s+/);
+        lat = parseFloat(parts[0].trim());
+        lng = parseFloat(parts[1].trim());
+      }
+      else {
+        console.error('❌ Formato no reconocido. Input:', cleanInput);
+        alert('⚠️ Formato incorrecto. Usa: latitud, longitud (ejemplo: 23.156, -102.345)\n\nFormatos válidos:\n- Con coma: 23.174246,-102.845922\n- Con coma y espacio: 23.174246, -102.845922\n- Con espacio: 23.174246 -102.845922\n\nTu input: ' + cleanInput);
+        return;
+      }
+      
+      console.log('✅ Latitud parseada:', lat, 'Longitud parseada:', lng);
+      
+      // Validar que sean números válidos
+      if (isNaN(lat) || isNaN(lng)) {
+        console.error('❌ Coordenadas inválidas - NaN detected');
+        const parts = cleanInput.split(',');
+        alert('⚠️ Por favor ingresa coordenadas válidas (ejemplo: 23.156, -102.345)\n\nSe intentó parsear:\n- Latitud: ' + parts[0]?.trim() + ' = ' + lat + '\n- Longitud: ' + parts[1]?.trim() + ' = ' + lng);
+        return;
+      }
+      
+      // Validar rangos
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        console.error('❌ Coordenadas fuera de rango:', lat, lng);
+        alert('⚠️ Coordenadas inválidas. Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.\n\nCoordenadas recibidas:\n- Latitud: ' + lat + '\n- Longitud: ' + lng);
+        return;
+      }
+      
+      // Mover el mapa a las coordenadas
+      setSelectedLocation({ lat, lng });
+      
+      if (mapInstance) {
+        mapInstance.panTo({ lat, lng });
+        mapInstance.setZoom(16);
+      }
+      
+      // Hacer geocodificación inversa para obtener la dirección
+      reverseGeocode(lat, lng);
+      
+      console.log(`✅ Coordenadas exitosas: ${lat}, ${lng}`);
+    } catch (error) {
+      console.error('❌ Error al procesar coordenadas:', error);
+      alert('❌ Error al procesar las coordenadas. Verifica el formato.\n\nError: ' + (error instanceof Error ? error.message : String(error)) + '\n\nInput: ' + coordinatesInput);
+    }
+  };
+
   // OCULTO - Función ya no usada porque ocultamos el botón Eliminar
   // const handleDeleteLastDigit = () => {...}
+
+  // Función expuesta para actualizar coordenadas desde fuera (GPS)
+  useEffect(() => {
+    // Escuchar eventos personalizados para actualización forzada
+    const handleForceUpdate = (event: CustomEvent<{ value: string }>) => {
+      console.log('🔄 Evento personalizado recibido:', event.detail.value);
+      setCoordinatesInput(event.detail.value);
+      setHasGPSCoords(true); // Activar mensaje
+    };
+    
+    window.addEventListener('force-coordinates-update' as any, handleForceUpdate as any);
+    return () => window.removeEventListener('force-coordinates-update' as any, handleForceUpdate as any);
+  }, []);
 
   // OCULTO - Funciones ya no usadas porque ocultamos los campos separados
   // const handleLatitudeChange = (value: string) => {...}
@@ -418,28 +500,124 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
       </div>
       */}
 
-      {/* Campo de búsqueda de dirección con autocompletado */}
+      {/* Campo de coordenadas combinadas */}
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{
-          display: 'block',
-          fontSize: '0.875rem',
-          fontWeight: '600',
-          color: '#374151',
-          marginBottom: '0.5rem'
-        }}>
-          🔍 Busca la dirección escribiendo calle, número y colonia:
-        </label>
-        
-        <div ref={autocompleteRef} id="place-autocomplete" style={{ marginBottom: '0.5rem' }}></div>
+          <label style={{
+            display: 'block',
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: '#374151',
+            marginBottom: '0.5rem'
+          }}>
+            📍 O ingresa coordenadas exactas:
+          </label>
+          
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={coordinatesInput}
+              onChange={(e) => setCoordinatesInput(e.target.value)}
+              placeholder="Ej: 23.156, -102.345"
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.5rem',
+                fontSize: '0.95rem',
+                fontFamily: 'monospace'
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleCoordinatesSearch();
+                }
+              }}
+            />
+            {/* OCULTO - Botón Eliminar */}
+            {/* <button
+              type="button"
+              onClick={handleDeleteLastDigit}
+              title="Eliminar último dígito"
+              disabled={!coordinatesInput}
+              style={{
+                backgroundColor: !coordinatesInput ? '#9ca3af' : '#dc2626',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.5rem',
+                fontWeight: '600',
+                cursor: coordinatesInput ? 'pointer' : 'not-allowed',
+                fontSize: '0.85rem',
+                whiteSpace: 'nowrap',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {
+                if (coordinatesInput) e.currentTarget.style.backgroundColor = '#b91c1c';
+              }}
+              onMouseOut={(e) => {
+                if (coordinatesInput) e.currentTarget.style.backgroundColor = '#dc2626';
+              }}
+            >
+              ✂️ Eliminar
+            </button> */}
+            <button
+              type="button"
+              onClick={handleCoordinatesSearch}
+              style={{
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.5rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                whiteSpace: 'nowrap',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+            >
+              📍 Buscar
+            </button>
+          </div>
 
-        <p style={{
-          fontSize: '0.75rem',
-          color: '#6b7280',
-          marginTop: '0.5rem'
-        }}>
-          💡 Escribe la dirección completa y selecciona de las sugerencias de Google
-        </p>
-      </div>
+          {/* MENSAJE INFORMATIVO - Solo visible después de obtener GPS */}
+          {hasGPSCoords && (
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              backgroundColor: '#dbeafe',
+              borderRadius: '0.5rem',
+              border: '2px solid #3b82f6',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
+                color: '#1e40af',
+                margin: 0,
+                lineHeight: '1.5'
+              }}>
+                📍 ¡PRESIONA EL BOTÓN "BUSCAR" PARA OBTENER TU CALLE Y COLONIA!
+              </p>
+              <p style={{
+                fontSize: '0.9rem',
+                color: '#1e40af',
+                margin: '0.5rem 0 0 0'
+              }}>
+                Las coordenadas ya están listas, solo falta confirmar la dirección exacta.
+              </p>
+            </div>
+          )}
+
+          <p style={{
+            fontSize: '0.75rem',
+            color: '#6b7280',
+            marginTop: '0.5rem'
+          }}>
+            💡 Formato: latitud, longitud (ejemplo: 23.156, -102.345). Presiona Enter para buscar.
+          </p>
+        </div>
 
       {/* Mapa interactivo de Google Maps */}
       <div style={{ marginBottom: '1rem' }}>
