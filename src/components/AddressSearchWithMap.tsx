@@ -30,6 +30,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [coordinatesInput, setCoordinatesInput] = useState('');
+  const [hasGPSCoords, setHasGPSCoords] = useState(false); // Para mostrar mensaje después de GPS
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -278,6 +279,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     const handleForceUpdate = (event: CustomEvent<{ value: string }>) => {
       console.log('🔄 Evento personalizado recibido:', event.detail.value);
       setCoordinatesInput(event.detail.value);
+      setHasGPSCoords(true); // Activar mensaje
     };
     
     window.addEventListener('force-coordinates-update' as any, handleForceUpdate as any);
@@ -569,6 +571,35 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               📍 Buscar
             </button>
           </div>
+
+          {/* MENSAJE INFORMATIVO - Solo visible después de obtener GPS */}
+          {hasGPSCoords && (
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              backgroundColor: '#dbeafe',
+              borderRadius: '0.5rem',
+              border: '2px solid #3b82f6',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
+                color: '#1e40af',
+                margin: 0,
+                lineHeight: '1.5'
+              }}>
+                📍 ¡PRESIONA EL BOTÓN "BUSCAR" PARA OBTENER TU CALLE Y COLONIA!
+              </p>
+              <p style={{
+                fontSize: '0.9rem',
+                color: '#1e40af',
+                margin: '0.5rem 0 0 0'
+              }}>
+                Las coordenadas ya están listas, solo falta confirmar la dirección exacta.
+              </p>
+            </div>
+          )}
 
           <p style={{
             fontSize: '0.75rem',

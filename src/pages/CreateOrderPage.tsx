@@ -567,7 +567,8 @@ const CreateOrderPage: React.FC = () => {
                              console.log('💡 Ahora puedes presionar "📍 Buscar" manualmente o se buscará automáticamente');
                            }, 300);
 
-                           alert('✅ Ubicación obtenida exitosamente\n\n🏠 Calle: ' + road + '\n🔢 Número: ' + hNumber + '\n🏘️ Colonia: ' + s + '\n🏙️ Ciudad: ' + c + '\n📍 Estado: ' + st + '\n📬 CP: ' + p + '\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\n✨ Los campos se han llenado automáticamente con tu dirección\n\n💡 Ahora puedes ver el botón "✂️ Eliminar" junto al campo de coordenadas');
+                           // Mostrar mensaje informativo (NO la ventana modal)
+                           console.log('✅ Ubicación obtenida - Coordenadas:', `${lat}, ${lng}`);
                          } catch (error) {
                            console.error('Error al obtener dirección:', error);
                            alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
