@@ -492,11 +492,38 @@ const CreateOrderPage: React.FC = () => {
                              // 3. Forzar activación del botón Eliminar después de un pequeño delay
                              setTimeout(() => {
                                const deleteButton = document.querySelector('button[title="Eliminar último dígito"]') as HTMLButtonElement;
-                               if (deleteButton && coordsInput) {
+                               const coordsInputReal = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
+                               
+                               if (deleteButton && coordsInputReal) {
+                                 console.log('🔍 DEBUG - Antes de disparar eventos:');
+                                 console.log('   📊 Valor del campo:', coordsInputReal.value);
+                                 console.log('   📏 Longitud:', coordsInputReal.value.length);
+                                 console.log('   🔘 Botón existe:', !!deleteButton);
+                                 console.log('   🔘 Botón disabled:', deleteButton.disabled);
+                                 console.log('   🔘 Botón style.backgroundColor:', deleteButton.style.backgroundColor);
+                                 
                                  // Disparar evento input para que React detecte el cambio
-                                 coordsInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                 coordsInput.dispatchEvent(new Event('change', { bubbles: true }));
-                                 console.log('🔴 Botón Eliminar debería estar ROJO ahora');
+                                 coordsInputReal.dispatchEvent(new Event('input', { bubbles: true }));
+                                 coordsInputReal.dispatchEvent(new Event('change', { bubbles: true }));
+                                 
+                                 setTimeout(() => {
+                                   console.log('🔍 DEBUG - Después de disparar eventos:');
+                                   console.log('   📊 Valor del campo:', coordsInputReal.value);
+                                   console.log('   🔘 Botón disabled:', deleteButton.disabled);
+                                   console.log('   🔘 Botón style.backgroundColor:', deleteButton.style.backgroundColor);
+                                   
+                                   // Verificar si el botón debería estar habilitado
+                                   const hasValue = coordsInputReal.value && coordsInputReal.value.length > 0;
+                                   console.log('   ✅ ¿Tiene valor?', hasValue);
+                                   console.log('   🎨 Color esperado:', hasValue ? 'ROJO (#dc2626)' : 'GRIS (#9ca3af)');
+                                   
+                                   if (hasValue && deleteButton.disabled) {
+                                     console.error('❌ ERROR: El campo tiene valor pero el botón sigue deshabilitado');
+                                     console.error('   Esto es lo que debes reportar!');
+                                   } else if (hasValue && !deleteButton.disabled) {
+                                     console.log('✅ ÉXITO: El botón está habilitado correctamente');
+                                   }
+                                 }, 50);
                                }
                              }, 100);
                              
