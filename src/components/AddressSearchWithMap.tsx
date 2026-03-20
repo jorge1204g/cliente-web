@@ -29,8 +29,6 @@ const center = {
 const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect }) => {
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-  const [coordinatesInput, setCoordinatesInput] = useState('');
-  const [hasGPSCoords, setHasGPSCoords] = useState(false); // Para mostrar mensaje después de GPS
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -64,24 +62,22 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   useEffect(() => {
     if (isLibraryLoaded && autocompleteRef.current && google.maps.places.PlaceAutocompleteElement) {
       try {
-        // Crear elemento de autocompletado
+        // Nueva API de Google Maps - sin property 'fields'
         const autocompleteOptions = {
           componentRestrictions: { country: 'mx' },
-          fields: ['geometry', 'formatted_address', 'address_components'],
         };
 
         autocompleteInstance.current = new google.maps.places.PlaceAutocompleteElement(
           autocompleteOptions
         );
 
-        // Renderizar en el contenedor - PlaceAutocompleteElement se renderiza automáticamente
-        // cuando se appendea al DOM
+        // Renderizar en el contenedor
         if (autocompleteRef.current && autocompleteInstance.current) {
           autocompleteRef.current.innerHTML = '';
           autocompleteRef.current.appendChild(autocompleteInstance.current);
         }
 
-        // Escuchar cuando se selecciona un lugar usando el nuevo sistema de eventos
+        // Escuchar cuando se selecciona un lugar
         autocompleteInstance.current.addEventListener('gmp-placeselect', async (event: any) => {
           const place = await event.place;
           
@@ -97,7 +93,6 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
             let state = '';
             let postcode = '';
 
-            // Usar addressComponents si están disponibles
             if (place.addressComponents) {
               place.addressComponents.forEach((component: any) => {
                 const types = component.types;
@@ -110,16 +105,13 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               });
             }
 
-            // Actualizar estado
             setSelectedLocation({ lat, lng });
 
-            // Mover el mapa
             if (mapInstance) {
               mapInstance.panTo({ lat, lng });
               mapInstance.setZoom(16);
             }
 
-            // Pasar datos al componente padre
             onAddressSelect({
               street: road,
               houseNumber: houseNumber,
@@ -131,7 +123,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               lng
             });
 
-            console.log('✅ Lugar seleccionado con nueva API:', place.formattedAddress);
+            console.log('✅ Lugar seleccionado:', place.formattedAddress);
           }
         });
 
