@@ -462,9 +462,11 @@ const CreateOrderPage: React.FC = () => {
                            setTimeout(() => {
                              // 1. Llenar campo combinado de coordenadas
                              const coordsInput = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
+                             let coordsValue = '';
+                             
                              if (coordsInput) {
                                // Formato CON espacio: "23.1742946, -102.8457795"
-                               const coordsValue = `${lat}, ${lng}`;
+                               coordsValue = `${lat}, ${lng}`;
                                
                                // Método 1: Asignar valor directamente
                                coordsInput.value = coordsValue;
@@ -489,43 +491,41 @@ const CreateOrderPage: React.FC = () => {
                                console.log(`✅ Coordenadas pegadas automáticamente en campo combinado: ${coordsValue}`);
                              }
                              
-                             // 3. Forzar activación del botón Eliminar después de un pequeño delay
+                             // 3. Disparar evento personalizado para que React detecte el cambio
                              setTimeout(() => {
-                               const deleteButton = document.querySelector('button[title="Eliminar último dígito"]') as HTMLButtonElement;
                                const coordsInputReal = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
                                
-                               if (deleteButton && coordsInputReal) {
-                                 console.log('🔍 DEBUG - Antes de disparar eventos:');
-                                 console.log('   📊 Valor del campo:', coordsInputReal.value);
-                                 console.log('   📏 Longitud:', coordsInputReal.value.length);
-                                 console.log('   🔘 Botón existe:', !!deleteButton);
-                                 console.log('   🔘 Botón disabled:', deleteButton.disabled);
-                                 console.log('   🔘 Botón style.backgroundColor:', deleteButton.style.backgroundColor);
+                               if (coordsInputReal) {
+                                 // Disparar evento personalizado para actualizar estado de React
+                                 const customEvent = new CustomEvent('force-coordinates-update', {
+                                   detail: { value: coordsValue }
+                                 });
+                                 window.dispatchEvent(customEvent);
                                  
-                                 // Disparar evento input para que React detecte el cambio
-                                 coordsInputReal.dispatchEvent(new Event('input', { bubbles: true }));
-                                 coordsInputReal.dispatchEvent(new Event('change', { bubbles: true }));
+                                 console.log('🔄 Evento personalizado disparado para actualizar React');
                                  
                                  setTimeout(() => {
-                                   console.log('🔍 DEBUG - Después de disparar eventos:');
-                                   console.log('   📊 Valor del campo:', coordsInputReal.value);
-                                   console.log('   🔘 Botón disabled:', deleteButton.disabled);
-                                   console.log('   🔘 Botón style.backgroundColor:', deleteButton.style.backgroundColor);
+                                   const deleteButton = document.querySelector('button[title="Eliminar último dígito"]') as HTMLButtonElement;
                                    
-                                   // Verificar si el botón debería estar habilitado
-                                   const hasValue = coordsInputReal.value && coordsInputReal.value.length > 0;
-                                   console.log('   ✅ ¿Tiene valor?', hasValue);
-                                   console.log('   🎨 Color esperado:', hasValue ? 'ROJO (#dc2626)' : 'GRIS (#9ca3af)');
-                                   
-                                   if (hasValue && deleteButton.disabled) {
-                                     console.error('❌ ERROR: El campo tiene valor pero el botón sigue deshabilitado');
-                                     console.error('   Esto es lo que debes reportar!');
-                                   } else if (hasValue && !deleteButton.disabled) {
-                                     console.log('✅ ÉXITO: El botón está habilitado correctamente');
+                                   if (deleteButton && coordsInputReal) {
+                                     console.log('🔍 DEBUG - Después del evento personalizado:');
+                                     console.log('   📊 Valor del campo:', coordsInputReal.value);
+                                     console.log('   🔘 Botón disabled:', deleteButton.disabled);
+                                     console.log('   🔘 Botón style.backgroundColor:', deleteButton.style.backgroundColor);
+                                     
+                                     const hasValue = coordsInputReal.value && coordsInputReal.value.length > 0;
+                                     
+                                     if (hasValue && deleteButton.disabled) {
+                                       console.error('❌ ERROR CRÍTICO: El botón sigue deshabilitado aunque React debería haber actualizado');
+                                       console.error('   Valor en input DOM:', coordsInputReal.value);
+                                       console.error('   Estado coordinatesInput en React debería ser:', coordsValue);
+                                     } else if (hasValue && !deleteButton.disabled) {
+                                       console.log('✅ ÉXITO TOTAL: React actualizó correctamente el botón!');
+                                     }
                                    }
-                                 }, 50);
+                                 }, 100);
                                }
-                             }, 100);
+                             }, 50);
                              
                              // 2. Llenar campos separados de Latitud y Longitud
                              const latitudeInput = document.querySelector('input[placeholder="Ej: 23.174257"]') as HTMLInputElement;

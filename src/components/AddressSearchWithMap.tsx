@@ -296,6 +296,18 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     }
   };
 
+  // Función expuesta para actualizar coordenadas desde fuera (GPS)
+  useEffect(() => {
+    // Escuchar eventos personalizados para actualización forzada
+    const handleForceUpdate = (event: CustomEvent<{ value: string }>) => {
+      console.log('🔄 Evento personalizado recibido:', event.detail.value);
+      setCoordinatesInput(event.detail.value);
+    };
+    
+    window.addEventListener('force-coordinates-update' as any, handleForceUpdate as any);
+    return () => window.removeEventListener('force-coordinates-update' as any, handleForceUpdate as any);
+  }, []);
+
   // Manejar campos separados de latitud y longitud
   const handleLatitudeChange = (value: string) => {
     setLatitudeInput(value);
