@@ -61,16 +61,16 @@ const CreateOrderPage: React.FC = () => {
   const [favorType, setFavorType] = useState('');
   const [pickupLocationForFavor, setPickupLocationForFavor] = useState('');
   
-  // OCULTO - Estados ya no usados porque ocultamos las secciones de recogida y detalles
-  const [requiresPickup, setRequiresPickup] = useState(false); // No usado
-  const [pickupAddress, setPickupAddress] = useState(''); // No usado
-  const [pickupName, setPickupName] = useState(''); // No usado
-  const [pickupUrl, setPickupUrl] = useState(''); // No usado
+  // OCULTO - Variables necesarias para el código pero no usadas en UI visible
+  const [_requiresPickup, _setRequiresPickup] = useState(false);
+  const [_pickupAddress, _setPickupAddress] = useState('');
+  const [_pickupName, _setPickupName] = useState('');
+  const [_pickupUrl, _setPickupUrl] = useState('');
   
   // Detalles del pedido
   const [items, setItems] = useState('');
-  const [notes, setNotes] = useState(''); // No usado
-  const [confirmationCode, setConfirmationCode] = useState(''); // No usado
+  const [_notes, _setNotes] = useState('');
+  const [_confirmationCode, _setConfirmationCode] = useState('');
   
   // Estados
   const [loading, setLoading] = useState(false);
@@ -998,8 +998,8 @@ const CreateOrderPage: React.FC = () => {
                       <label style={labelStyle}>📍 Dirección donde recoger la receta *</label>
                       <input
                         type="text"
-                        value={pickupAddress}
-                        onChange={(e) => setPickupAddress(e.target.value)}
+                        value={_pickupAddress}
+                        onChange={(e) => _setPickupAddress(e.target.value)}
                         required
                         style={inputStyle}
                         placeholder="Dirección completa donde recoger la receta"
