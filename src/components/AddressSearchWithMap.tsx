@@ -269,15 +269,8 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     }
   };
 
-  // Eliminar último dígito de las coordenadas
-  const handleDeleteLastDigit = () => {
-    if (coordinatesInput.length > 0) {
-      const newValue = coordinatesInput.slice(0, -1);
-      setCoordinatesInput(newValue);
-      
-      console.log(`✂️ Último dígito eliminado: "${coordinatesInput}" → "${newValue}"`);
-    }
-  };
+  // OCULTO - Función ya no usada porque ocultamos el botón Eliminar
+  // const handleDeleteLastDigit = () => {...}
 
   // Función expuesta para actualizar coordenadas desde fuera (GPS)
   useEffect(() => {
@@ -528,7 +521,8 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
                 }
               }}
             />
-            <button
+            {/* OCULTO - Botón Eliminar */}
+            {/* <button
               type="button"
               onClick={handleDeleteLastDigit}
               title="Eliminar último dígito"
@@ -553,7 +547,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               }}
             >
               ✂️ Eliminar
-            </button>
+            </button> */}
             <button
               type="button"
               onClick={handleCoordinatesSearch}

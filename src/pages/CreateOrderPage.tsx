@@ -465,8 +465,10 @@ const CreateOrderPage: React.FC = () => {
                              let coordsValue = '';
                              
                              if (coordsInput) {
-                               // Formato CON espacio: "23.1742946, -102.8457795"
-                               coordsValue = `${lat}, ${lng}`;
+                               // Formato CON espacio y SOLO 6 DÍGITOS: "23.174295, -102.845780"
+                               const latFixed = parseFloat(lat.toString()).toFixed(6);
+                               const lngFixed = parseFloat(lng.toString()).toFixed(6);
+                               coordsValue = `${latFixed}, ${lngFixed}`;
                                
                                // Método 1: Asignar valor directamente
                                coordsInput.value = coordsValue;
@@ -521,6 +523,14 @@ const CreateOrderPage: React.FC = () => {
                                        console.error('   Estado coordinatesInput en React debería ser:', coordsValue);
                                      } else if (hasValue && !deleteButton.disabled) {
                                        console.log('✅ ÉXITO TOTAL: React actualizó correctamente el botón!');
+                                       
+                                       // AUTO-BUSCAR después de obtener coordenadas
+                                       console.log('🔍 Iniciando búsqueda automática...');
+                                       const searchButton = document.querySelector('button[textContent*="📍 Buscar"]') as HTMLButtonElement;
+                                       if (searchButton) {
+                                         searchButton.click();
+                                         console.log('✅ Búsqueda automática iniciada!');
+                                       }
                                      }
                                    }
                                  }, 100);
