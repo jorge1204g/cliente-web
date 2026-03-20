@@ -619,7 +619,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
             color: '#374151',
             marginBottom: '0.5rem'
           }}>
-            📍 O haz clic en el mapa para seleccionar tu ubicación:
+            📍 MUEVE EL MAPA HASTA LA UBICACIÓN EXACTA DE TU DOMICILIO:
           </label>
           
           <div
