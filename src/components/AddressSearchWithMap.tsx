@@ -29,6 +29,8 @@ const center = {
 const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect }) => {
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
+  const [coordinatesInput, setCoordinatesInput] = useState('');
+  const [_hasGPSCoords, _setHasGPSCoords] = useState(false);
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -195,7 +197,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   };
 
   // Manejar entrada de coordenadas
-  const handleCoordinatesSearch = () => {
+  const _handleCoordinatesSearch = () => {
     try {
       // Limpiar espacios y dividir por coma o espacio
       const cleanInput = coordinatesInput.trim();
@@ -271,7 +273,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     const handleForceUpdate = (event: CustomEvent<{ value: string }>) => {
       console.log('🔄 Evento personalizado recibido:', event.detail.value);
       setCoordinatesInput(event.detail.value);
-      setHasGPSCoords(true); // Activar mensaje
+      _setHasGPSCoords(true); // Activar mensaje
     };
     
     window.addEventListener('force-coordinates-update' as any, handleForceUpdate as any);
@@ -461,7 +463,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               if (latitudeInput && longitudeInput) {
                 setCoordinatesInput(`${latitudeInput},${longitudeInput}`);
                 setTimeout(() => {
-                  handleCoordinatesSearch();
+                  _handleCoordinatesSearch();
                 }, 100);
               } else {
                 alert('⚠️ Por favor ingresa ambas coordenadas');
