@@ -30,7 +30,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [coordinatesInput, setCoordinatesInput] = useState('');
-  const [_hasGPSCoords, _setHasGPSCoords] = useState(false);
+  const [hasGPSCoords, setHasGPSCoords] = useState(false);
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -196,8 +196,69 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     }
   };
 
+  // Obtener ubicación actual por GPS
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('⚠️ Tu navegador no soporta geolocalización GPS');
+      return;
+    }
+
+    console.log('🛰️ Solicitando permisos de GPS...');
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        console.log('✅ GPS exitoso - Lat:', lat, 'Lng:', lng);
+        
+        // Poner coordenadas en el campo
+        setCoordinatesInput(`${lat}, ${lng}`);
+        setHasGPSCoords(true);
+        
+        // Mover el mapa
+        setSelectedLocation({ lat, lng });
+        
+        if (mapInstance) {
+          mapInstance.panTo({ lat, lng });
+          mapInstance.setZoom(16);
+        }
+        
+        // Hacer geocodificación inversa
+        reverseGeocode(lat, lng);
+        
+        console.log('💡 Coordenadas GPS establecidas - Búsqueda automática iniciada');
+      },
+      (error) => {
+        console.error('❌ Error GPS:', error);
+        let mensaje = '⚠️ No se pudo obtener tu ubicación.\n\n';
+        
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            mensaje += 'Permiso de GPS denegado. Por favor activa los permisos de ubicación en tu navegador.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            mensaje += 'Información de GPS no disponible.';
+            break;
+          case error.TIMEOUT:
+            mensaje += 'Tiempo de espera agotado. Intenta de nuevo.';
+            break;
+          default:
+            mensaje += 'Error desconocido.';
+        }
+        
+        alert(mensaje);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+
   // Manejar entrada de coordenadas
-  const _handleCoordinatesSearch = () => {
+  const handleCoordinatesSearch = () => {
     try {
       // Limpiar espacios y dividir por coma o espacio
       const cleanInput = coordinatesInput.trim();
@@ -273,7 +334,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
     const handleForceUpdate = (event: CustomEvent<{ value: string }>) => {
       console.log('🔄 Evento personalizado recibido:', event.detail.value);
       setCoordinatesInput(event.detail.value);
-      _setHasGPSCoords(true); // Activar mensaje
+      setHasGPSCoords(true); // Activar mensaje
     };
     
     window.addEventListener('force-coordinates-update' as any, handleForceUpdate as any);
@@ -334,32 +395,97 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      {/* BÚSQUEDA DE DIRECCIÓN CON AUTOCOMPLETADO */}
+      {/* CAMPO DE COORDENADAS CON BOTÓN GPS */}
       <div style={{
         padding: '1rem',
-        backgroundColor: '#f0f9ff',
+        backgroundColor: '#f0fdf4',
         borderRadius: '0.5rem',
-        border: '2px solid #0ea5e9',
+        border: '2px solid #22c55e',
         marginBottom: '1rem'
       }}>
         <label style={{
           display: 'block',
           fontSize: '0.875rem',
           fontWeight: '600',
-          color: '#0369a1',
+          color: '#16a34a',
           marginBottom: '0.75rem'
         }}>
-          🔍 Escribe la dirección exacta:
+          📍 O ingresa coordenadas exactas:
         </label>
         
-        <div ref={autocompleteRef} id="place-autocomplete" style={{ marginBottom: '0.5rem' }}></div>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <input
+            type="text"
+            value={coordinatesInput}
+            onChange={(e) => setCoordinatesInput(e.target.value)}
+            placeholder="Ej: 23.156, -102.345"
+            style={{
+              flex: 1,
+              padding: '0.625rem',
+              border: '1px solid #22c55e',
+              borderRadius: '0.375rem',
+              fontSize: '0.95rem'
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleCoordinatesSearch}
+            style={{
+              backgroundColor: '#22c55e',
+              color: 'white',
+              border: 'none',
+              padding: '0.625rem 1rem',
+              borderRadius: '0.375rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            📍 Buscar
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={getCurrentLocation}
+          style={{
+            width: '100%',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            padding: '0.75rem',
+            borderRadius: '0.375rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            marginTop: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          🛰️ Usar mi ubicación actual
+        </button>
+
+        {hasGPSCoords && (
+          <p style={{
+            fontSize: '0.75rem',
+            color: '#16a34a',
+            marginTop: '0.5rem',
+            fontWeight: '600'
+          }}>
+            💡 Coordenadas obtenidas por GPS - Se buscará automáticamente
+          </p>
+        )}
 
         <p style={{
-          fontSize: '0.75rem',
+          fontSize: '0.65rem',
           color: '#6b7280',
           marginTop: '0.5rem'
         }}>
-          💡 Escribe calle, número y colonia - Selecciona de las sugerencias
+          💡 Formato: latitud, longitud (ejemplo: 23.156, -102.345). Presiona Enter para buscar.
         </p>
       </div>
 
