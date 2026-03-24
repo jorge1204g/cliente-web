@@ -348,6 +348,18 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   // const handleLongitudeBlur = () => {...}
   // OCULTO - useEffect ya no usado
 
+  // 🛰️ Auto-click en botón GPS al cargar el componente (solo una vez)
+  useEffect(() => {
+    console.log('🛰️ Auto-solicitando ubicación GPS al cargar...');
+    
+    // Pequeño delay para asegurar que el componente esté completamente renderizado
+    const timer = setTimeout(() => {
+      getCurrentLocation();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []); // Solo se ejecuta al montar
+
   // Cargar mapa manualmente
   useEffect(() => {
     if (isLibraryLoaded && !mapInstance) {
