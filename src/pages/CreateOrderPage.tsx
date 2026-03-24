@@ -78,6 +78,68 @@ const CreateOrderPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 🛰️ Auto-obtener ubicación al cargar la página
+  useEffect(() => {
+    // Solo intentar obtener ubicación si aún no se ha obtenido
+    if (deliveryLat === null && deliveryLng === null) {
+      console.log('🛰️ Solicitando ubicación automática al cargar...');
+      
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+              
+            console.log('✅ Ubicación obtenida:', `${lat}, ${lng}`);
+            
+            // Guardar coordenadas en los estados
+            setDeliveryLat(lat);
+            setDeliveryLng(lng);
+              
+            try {
+              // Obtener dirección usando Nominatim con más detalles
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`
+              );
+              const data = await response.json();
+                
+              // Extraer información de la dirección
+              const road = data.address?.road || data.address?.pedestrian || '';
+              const hNumber = data.address?.house_number || '';
+              const s = data.address?.suburb || data.address?.neighbourhood || data.address?.quarter || '';
+              const c = data.address?.city || data.address?.town || data.address?.village || '';
+              const p = data.address?.postcode || '';
+              const st = data.address?.state || '';
+                
+              // Llenar campos individuales automáticamente
+              setStreet(road);
+              setHouseNumber(hNumber);
+              setSuburb(s);
+              setCity(c);
+              setState(st);
+              setPostcode(p);
+
+              console.log('✅ Dirección completada automáticamente:', road, hNumber, s, c, st, p);
+            } catch (err) {
+              console.warn('⚠️ No se pudo obtener la dirección exacta, pero las coordenadas están guardadas');
+            }
+          },
+          (error) => {
+            console.warn('⚠️ No se pudo obtener ubicación automática:', error.message);
+            console.log('💡 El usuario podrá obtener la ubicación manualmente con el botón');
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      } else {
+        console.warn('⚠️ Geolocalización no disponible en este navegador');
+      }
+    }
+  }, []); // Solo se ejecuta una vez al montar el componente
+
   const serviceTypes = [
     { value: 'FOOD', label: '🍔 Comida', icon: 'Comida de restaurante' },
     { value: 'GASOLINE', label: '⛽ Gasolina', icon: 'Combustible' },
