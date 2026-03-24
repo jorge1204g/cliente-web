@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarjetas para Imprimir - Click Entrega</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            padding: 20px;
+        }
+
+        .print-sheet {
+            max-width: 8.5in;
+            margin: 0 auto;
+        }
+
+        .card {
+            width: 3.5in;
+            height: 2in;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0.25in;
+            float: left;
+            page-break-inside: avoid;
+            position: relative;
+        }
+
+        .card-header {
+            height: 35%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .design-green .card-header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .design-purple .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .logo {
+            font-size: 28px;
+            margin-right: 10px;
+        }
+
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .card-body {
+            height: 65%;
+            padding: 8px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .qr-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .qr-code {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #11998e;
+            border-radius: 5px;
+            padding: 3px;
+        }
+
+        .design-purple .qr-code {
+            border-color: #667eea;
+        }
+
+        .url-text {
+            font-size: 7px;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            line-height: 1.2;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+
+        .feature {
+            font-size: 7px;
+            color: #333;
+            display: flex;
+            align-items: center;
+        }
+
+        .feature-icon {
+            margin-right: 3px;
+            font-size: 9px;
+        }
+
+        .cta {
+            text-align: center;
+            font-size: 8px;
+            font-weight: bold;
+            color: #11998e;
+            padding-top: 5px;
+            border-top: 1px solid #eee;
+        }
+
+        .design-purple .cta {
+            color: #667eea;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            .card {
+                border: none;
+            }
+        }
+
+        .clear {
+            clear: both;
+        }
+
+        .instructions {
+            max-width: 8.5in;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .instructions h2 {
+            color: #11998e;
+            margin-bottom: 15px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print instructions">
+        <h2>📄 Instrucciones de Impresión</h2>
+        <ul>
+            <li><strong>Paso 1:</strong> Presiona Ctrl + P (Windows) o Cmd + P (Mac)</li>
+            <li><strong>Paso 2:</strong> Configura tu impresora:
+                <ul>
+                    <li>Tipo de papel: Cartulina o couché (180-300 g/m²)</li>
+                    <li>Calidad: Alta (300 DPI mínimo)</li>
+                    <li>Color: Full color</li>
+                    <li>Márgenes: Mínimos</li>
+                </ul>
+            </li>
+            <li><strong>Paso 3:</strong> Haz clic en "Imprimir"</li>
+            <li><strong>Paso 4:</strong> Recorta las tarjetas por las líneas punteadas</li>
+        </ul>
+        <p style="color: #666; font-size: 14px;">
+            💡 <strong>Tip:</strong> Esta hoja está diseñada para imprimir 6-8 tarjetas por página tamaño carta.
+        </p>
+    </div>
+
+    <div class="print-sheet">
+        <!-- Fila 1 -->
+        <div class="card design-green">
+            <div class="card-header">
+                <span class="logo">🚚</span>
+                <span class="company-name">Click Entrega</span>
+            </div>
+            <div class="card-body">
+                <div class="qr-info">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://cliente-web-mu.vercel.app" alt="QR" class="qr-code"/>
+                    <div class="url-text">cliente-web-mu.vercel.app</div>
+                </div>
+                <div class="features">
+                    <div class="feature"><span class="feature-icon">🍔</span> Comida</div>
+                    <div class="feature"><span class="feature-icon">⛽</span> Gasolina</div>
+                    <div class="feature"><span class="feature-icon">💊</span> Medicinas</div>
+                    <div class="feature"><span class="feature-icon">📦</span> Paquetería</div>
+                </div>
+                <div class="cta">¡Escanea y pide ya!</div>
+            </div>
+        </div>
+
+        <div class="card design-purple">
+            <div class="card-header">
+                <span class="logo">📱</span>
+                <span class="company-name">App Cliente</span>
+            </div>
+            <div class="card-body">
+                <div class="qr-info">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://cliente-web-mu.vercel.app" alt="QR" class="qr-code"/>
+                    <div class="url-text">cliente-web-mu.vercel.app</div>
+                </div>
+                <div class="features">
+                    <div class="feature"><span class="feature-icon">⚡</span> Rápido</div>
+                    <div class="feature"><span class="feature-icon">🎯</span> Fácil</div>
+                    <div class="feature"><span class="feature-icon">👀</span> Rastrea</div>
+                    <div class="feature"><span class="feature-icon">✅</span> Seguro</div>
+                </div>
+                <div class="cta">¡Tu delivery ideal!</div>
+            </div>
+        </div>
+
+        <div class="clear"></div>
+
+        <!-- Fila 2 -->
+        <div class="card design-green">
+            <div class="card-header">
+                <span class="logo">🚚</span>
+                <span class="company-name">Click Entrega</span>
+            </div>
+            <div class="card-body">
+                <div class="qr-info">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://cliente-web-mu.vercel.app" alt="QR" class="qr-code"/>
+                    <div class="url-text">cliente-web-mu.vercel.app</div>
+                </div>
+                <div class="features">
+                    <div class="feature"><span class="feature-icon">🍔</span> Comida</div>
+                    <div class="feature"><span class="feature-icon">⛽</span> Gasolina</div>
+                    <div class="feature"><span class="feature-icon">💊</span> Medicinas</div>
+                    <div class="feature"><span class="feature-icon">📦</span> Paquetería</div>
+                </div>
+                <div class="cta">¡Escanea y pide ya!</div>
+            </div>
+        </div>
+
+        <div class="card design-purple">
+            <div class="card-header">
+                <span class="logo">📱</span>
+                <span class="company-name">App Cliente</span>
+            </div>
+            <div class="card-body">
+                <div class="qr-info">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://cliente-web-mu.vercel.app" alt="QR" class="qr-code"/>
+                    <div class="url-text">cliente-web-mu.vercel.app</div>
+                </div>
+                <div class="features">
+                    <div class="feature"><span class="feature-icon">⚡</span> Rápido</div>
+                    <div class="feature"><span class="feature-icon">🎯</span> Fácil</div>
+                    <div class="feature"><span class="feature-icon">👀</span> Rastrea</div>
+                    <div class="feature"><span class="feature-icon">✅</span> Seguro</div>
+                </div>
+                <div class="cta">¡Tu delivery ideal!</div>
+            </div>
+        </div>
+
+        <div class="clear"></div>
+
+        <!-- Fila 3 -->
+        <div class="card design-green">
+            <div class="card-header">
+                <span class="logo">🚚</span>
+                <span class="company-name">Click Entrega</span>
+            </div>
+            <div class="card-body">
+                <div class="qr-info">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://cliente-web-mu.vercel.app" alt="QR" class="qr-code"/>
+                    <div class="url-text">cliente-web-mu.vercel.app</div>
+                </div>
+                <div class="features">
+                    <div class="feature"><span class="feature-icon">🍔</span> Comida</div>
+                    <div class="feature"><span class="feature-icon">⛽</span> Gasolina</div>
+                    <div class="feature"><span class="feature-icon">💊</span> Medicinas</div>
+                    <div class="feature"><span class="feature-icon">📦</span> Paquetería</div>
+                </div>
+                <div class="cta">¡Escanea y pide ya!</div>
+            </div>
+        </div>
+
+        <div class="card design-purple">
+            <div class="card-header">
+                <span class="logo">📱</span>
+                <span class="company-name">App Cliente</span>
+            </div>
+            <div class="card-body">
+                <div class="qr-info">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://cliente-web-mu.vercel.app" alt="QR" class="qr-code"/>
+                    <div class="url-text">cliente-web-mu.vercel.app</div>
+                </div>
+                <div class="features">
+                    <div class="feature"><span class="feature-icon">⚡</span> Rápido</div>
+                    <div class="feature"><span class="feature-icon">🎯</span> Fácil</div>
+                    <div class="feature"><span class="feature-icon">👀</span> Rastrea</div>
+                    <div class="feature"><span class="feature-icon">✅</span> Seguro</div>
+                </div>
+                <div class="cta">¡Tu delivery ideal!</div>
+            </div>
+        </div>
+
+        <div class="clear"></div>
+    </div>
+
+    <script>
+        // Auto-print on load (optional)
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>

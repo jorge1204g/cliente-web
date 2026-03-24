@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarjeta de Presentación - Click Entrega</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .business-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .business-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .company-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .tagline {
+            font-size: 14px;
+            opacity: 0.95;
+            font-style: italic;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .qr-section {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 15px;
+            border: 3px solid #11998e;
+            border-radius: 15px;
+            padding: 10px;
+            background: white;
+        }
+
+        .scan-text {
+            color: #11998e;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .app-url {
+            background: #f0f0f0;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #333;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+        }
+
+        .features {
+            margin-top: 25px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .feature-item:hover {
+            background: #e8f5e9;
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            min-width: 30px;
+        }
+
+        .feature-text {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .card-footer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .contact-info {
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .contact-label {
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .cta-button:hover {
+            background: #f0f0f0;
+            transform: scale(1.05);
+        }
+
+        .instructions {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            margin-top: 30px;
+        }
+
+        .instructions h2 {
+            color: #11998e;
+            margin-bottom: 20px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 15px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .business-card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: 2px solid #11998e;
+            }
+
+            .instructions {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card-container {
+                grid-template-columns: 1fr;
+            }
+
+            .qr-code {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card-container">
+        <!-- Tarjeta Única Horizontal -->
+        <div class="business-card" onclick="window.open('https://cliente-web-mu.vercel.app', '_blank')" style="max-width: 900px;">
+            <div class="card-header">
+                <div class="logo">🚚</div>
+                <div class="company-name">Click Entrega</div>
+                <div class="tagline">Tu pedido, donde quieras, cuando quieras</div>
+            </div>
+
+            <div class="card-body" style="display: flex; flex-direction: row; gap: 30px; align-items: center;">
+                <div class="qr-section" style="flex: 0 0 auto; margin-bottom: 0;">
+                    <div class="scan-text">📱 Escanea para usar la app</div>
+                    <img 
+                        src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://cliente-web-mu.vercel.app" 
+                        alt="QR Code" 
+                        class="qr-code"
+                    />
+                    <div class="app-url">
+                        cliente-web-mu.vercel.app
+                    </div>
+                </div>
+
+                <div class="features" style="flex: 1;">
+                    <div class="feature-item">
+                        <span class="feature-icon">🍔</span>
+                        <span class="feature-text">Pide comida de cualquier restaurante</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⛽</span>
+                        <span class="feature-text">Gasolina, medicamentos y más</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📦</span>
+                        <span class="feature-text">Seguimiento en tiempo real</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💳</span>
+                        <span class="feature-text">Pago seguro y conveniente</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <div class="contact-info">
+                    <span class="contact-label">🌐</span>
+                    Servicio disponible 24/7
+                </div>
+                <div class="contact-info">
+                    <span class="contact-label">🔒</span>
+                    Tus datos siempre protegidos
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        // Animación suave al hacer hover
+        document.querySelectorAll('.business-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transition = 'all 0.3s ease';
+            });
+        });
+    </script>
+</body>
+</html>

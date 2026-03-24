@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import CreateOrderPage from './pages/CreateOrderPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import ProfilePage from './pages/ProfilePage';
+import ChatPage from './pages/ChatPage';
 
 const App: React.FC = () => {
   return (
@@ -20,6 +21,7 @@ const App: React.FC = () => {
           <Route path="/crear-pedido" element={<CreateOrderPage />} />
           <Route path="/mis-pedidos" element={<MyOrdersPage />} />
           <Route path="/perfil" element={<ProfilePage />} />
+          <Route path="/chat" element={<ChatPage />} />
           <Route path="*" element={<Navigate to="/inicio" />} />
         </Routes>
       </div>

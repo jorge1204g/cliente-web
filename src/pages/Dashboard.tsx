@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthService from '../services/AuthService';
+import OrderService from '../services/OrderService';
+import { ClientOrder } from '../services/OrderService';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientName, setClientName] = useState<string>('');
+  const [hasActiveOrder, setHasActiveOrder] = useState<boolean>(false);
+  const [activeOrdersCount, setActiveOrdersCount] = useState<number>(0);
 
   useEffect(() => {
     if (!AuthService.isAuthenticated()) {
@@ -14,6 +18,33 @@ const Dashboard: React.FC = () => {
     
     const name = AuthService.getClientName();
     setClientName(name || 'Cliente');
+
+    // Verificar si hay pedidos en curso
+    const clientId = AuthService.getClientId();
+    if (clientId) {
+      const unsubscribe = OrderService.listenToClientOrders(clientId, (orders: ClientOrder[]) => {
+        // Filtrar pedidos que están en curso (no cancelados ni entregados)
+        // Verificar múltiples formatos de estado (minúsculas, mayúsculas, etc.)
+        const activeOrders = orders.filter(order => {
+          const statusLower = order.status.toLowerCase();
+          return (
+            statusLower !== 'cancelled' &&
+            statusLower !== 'cancelado' &&
+            statusLower !== 'delivered' &&
+            statusLower !== 'entregado' &&
+            statusLower !== 'completed' &&
+            statusLower !== 'completado'
+          );
+        });
+        
+        setHasActiveOrder(activeOrders.length > 0);
+        setActiveOrdersCount(activeOrders.length);
+      });
+
+      return () => {
+        // Cleanup subscription si es necesario
+      };
+    }
   }, [navigate]);
 
   const services = [
@@ -85,10 +116,37 @@ const Dashboard: React.FC = () => {
     navigate('/perfil');
   };
 
+  const handlePruebas = () => {
+    // Abrir la página de pruebas en una nueva pestaña
+    window.open('/test-maps-simple.html', '_blank');
+  };
+
   const handleLogout = () => {
     AuthService.logout();
     navigate('/login');
   };
+
+  // Agregar estilos de animación
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   return (
     <div style={{
@@ -133,6 +191,73 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {/* Notificación de Pedido en Curso */}
+      {hasActiveOrder && (
+        <section style={{
+          backgroundColor: '#dbeafe',
+          padding: '1.5rem 1rem',
+          textAlign: 'center',
+          borderBottom: '2px solid #3b82f6',
+          animation: 'fadeInDown 0.5s ease-in'
+        }}>
+          <div style={{
+            maxWidth: '800px',
+            margin: '0 auto'
+          }}>
+            <div style={{
+              fontSize: '2.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              🎉
+            </div>
+            <h2 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#1e40af',
+              marginBottom: '0.5rem'
+            }}>
+              {activeOrdersCount === 1 
+                ? '¡Tienes un pedido en curso!' 
+                : `¡Tienes ${activeOrdersCount} pedidos en curso!`}
+            </h2>
+            <p style={{
+              fontSize: '0.95rem',
+              color: '#1e3a8a',
+              marginBottom: '1rem'
+            }}>
+              Consulta el estado de tu pedido ahora mismo
+            </p>
+            <button
+              onClick={handleMyOrders}
+              style={{
+                padding: '0.875rem 2rem',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '2rem',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 6px rgba(59, 130, 246, 0.4)',
+                transition: 'all 0.3s ease',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#3b82f6';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              📋 Ver Mi Pedido Ahora
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Hero Section */}
       <section style={{
@@ -211,6 +336,22 @@ const Dashboard: React.FC = () => {
             }}
           >
             👤 Perfil
+          </button>
+          <button
+            onClick={handlePruebas}
+            style={{
+              padding: '1rem 2rem',
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px rgba(245, 158, 11, 0.4)'
+            }}
+          >
+            🧪 Pruebas
           </button>
         </div>
       </section>

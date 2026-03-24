@@ -4,16 +4,92 @@ import AuthService from '../services/AuthService';
 import OrderService, { ClientOrder } from '../services/OrderService';
 
 // Componente de Timeline para el estado del pedido
-const OrderStatusTimeline: React.FC<{ status: string }> = ({ status }) => {
-  // Definir los estados en orden con mapeo correcto desde la app del repartidor
+const OrderStatusTimeline: React.FC<{ status: string; serviceType?: string }> = ({ status, serviceType }) => {
+  // Determinar el tipo de servicio para personalizar textos
+  const isGasoline = serviceType === 'GASOLINE';
+  const isFood = serviceType === 'FOOD';
+  const isMedicines = serviceType === 'MEDICINES';
+  const isStationery = serviceType === 'STATIONERY';
+  const isBeverages = serviceType === 'BEVERAGES';
+  const isWater = serviceType === 'WATER';
+  const isGas = serviceType === 'GAS';
+  const isPayments = serviceType === 'PAYMENTS';
+  const isFavors = serviceType === 'FAVORS';
+  
+  // Definir los estados en orden con textos personalizados por servicio
   const statusSteps = [
     { key: 'pending', label: '⏳ Pendiente', icon: '⏳' },
     { key: 'accepted', label: '✅ Aceptado', icon: '✅' },
-    { key: 'on_the_way_to_store', label: '🚗 En camino a recoger', icon: '🚗' },
-    { key: 'arrived_at_store', label: '🛍️ Llegó al restaurante', icon: '🛍️' },
-    { key: 'picking_up_order', label: '🎒 Repartidor con alimentos', icon: '🎒' },
-    { key: 'on_the_way_to_customer', label: '🚴 En camino al cliente', icon: '🚴' },
-    { key: 'delivered', label: '✅ Entregado', icon: '✅' }
+    {
+      key: 'on_the_way_to_store',
+      label: isGasoline ? '🚗⛽ En camino a recoger tu gasolina' : 
+             isFood ? '🚗🍔 En camino al restaurante' :
+             isMedicines ? '🚗💊 En camino a la farmacia' :
+             isStationery ? '🚗📝 En camino a la papelería' :
+             isBeverages ? '🚗🍺 En camino a recoger bebidas' :
+             isWater ? '🚗💧 En camino por garrafones' :
+             isGas ? '🚗🔥 En camino por gas' :
+             isPayments ? '🚗📦 En camino a realizar pago' :
+             isFavors ? '🚗🎁 En camino a recoger favor' :
+             '🚗 En camino a recoger',
+      icon: isGasoline ? '🚗⛽' : '🚗'
+    },
+    {
+      key: 'arrived_at_store',
+      label: isGasoline ? '⛽ Llegó a la gasolinera tu repartidor' :
+             isFood ? '🍔 Llegó al restaurante' :
+             isMedicines ? '💊 Llegó a la farmacia' :
+             isStationery ? '📝 Llegó a la papelería' :
+             isBeverages ? '🍺 Llegó a la tienda' :
+             isWater ? '💧 Llegó por el agua' :
+             isGas ? '🔥 Llegó por el gas' :
+             isPayments ? '📦 Llegó a realizar el pago' :
+             isFavors ? '🎁 Llegó a recoger el favor' :
+             '🛍️ Llegó al restaurante',
+      icon: isGasoline ? '⛽' : '🛍️'
+    },
+    {
+      key: 'picking_up_order',
+      label: isGasoline ? '⛽ Repartidor con tu gasolina' :
+             isFood ? '🍔 Repartidor con alimentos' :
+             isMedicines ? '💊 Repartidor con medicamentos' :
+             isStationery ? '📝 Repartidor con papelería' :
+             isBeverages ? '🍺 Repartidor con bebidas' :
+             isWater ? '💧 Repartidor con garrafones' :
+             isGas ? '🔥 Repartidor con gas' :
+             isPayments ? '📦 Repartidor realizando pago' :
+             isFavors ? '🎁 Repartidor con tu favor' :
+             '🎒 Repartidor con alimentos',
+      icon: isGasoline ? '⛽' : '🎒'
+    },
+    {
+      key: 'on_the_way_to_customer',
+      label: isGasoline ? '🚴⛽ En camino a tu domicilio - Estate pendiente' :
+             isFood ? '🚴🍔 En camino a tu domicilio' :
+             isMedicines ? '🚴💊 En camino a tu domicilio' :
+             isStationery ? '🚴📝 En camino a tu domicilio' :
+             isBeverages ? '🚴🍺 En camino a tu domicilio' :
+             isWater ? '🚴💧 En camino a tu domicilio' :
+             isGas ? '🚴🔥 En camino a tu domicilio' :
+             isPayments ? '🚴📦 En camino a entregarte comprobante' :
+             isFavors ? '🚴🎁 En camino a entregarte tu favor' :
+             '🚴 En camino al cliente',
+      icon: isGasoline ? '🚴⛽' : '🚴'
+    },
+    {
+      key: 'delivered',
+      label: isGasoline ? '⛽ Gasolina entregada exitosamente' :
+             isFood ? '🍔 Comida entregada' :
+             isMedicines ? '💊 Medicamentos entregados' :
+             isStationery ? '📝 Papelería entregada' :
+             isBeverages ? '🍺 Bebidas entregadas' :
+             isWater ? '💧 Garrafones entregados' :
+             isGas ? '🔥 Gas entregado' :
+             isPayments ? '📦 Pago realizado con éxito' :
+             isFavors ? '🎁 Favor completado' :
+             '✅ Entregado',
+      icon: isGasoline ? '⛽' : '✅'
+    }
   ];
 
   // Mapear estados equivalentes desde la app del repartidor a la app del cliente
@@ -310,6 +386,31 @@ const MyOrdersPage: React.FC = () => {
     }
   };
 
+  const getServiceTypeText = (serviceType: string): string => {
+    switch (serviceType) {
+      case 'FOOD':
+        return '🍔 Comida';
+      case 'GASOLINE':
+        return '⛽ Gasolina';
+      case 'STATIONERY':
+        return '📝 Papelería';
+      case 'MEDICINES':
+        return '💊 Medicamentos';
+      case 'BEVERAGES':
+        return '🍺 Cervezas y Cigarros';
+      case 'WATER':
+        return '💧 Garrafones de Agua';
+      case 'GAS':
+        return '🔥 Gas';
+      case 'PAYMENTS':
+        return '📦 Pagos o Cobros';
+      case 'FAVORS':
+        return '🎁 Favores';
+      default:
+        return 'Servicio';
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -474,6 +575,29 @@ const MyOrdersPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
+                  {/* Tipo de Servicio Seleccionado */}
+                  {order.serviceType && (
+                    <div style={{
+                      display: 'inline-block',
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #bfdbfe',
+                      marginTop: '0.5rem'
+                    }}>
+                      <p style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#1e40af',
+                        margin: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        {getServiceTypeText(order.serviceType)}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div style={{
                   backgroundColor: getStatusColor(order.status),
@@ -545,22 +669,62 @@ const MyOrdersPage: React.FC = () => {
                   {/* Repartidor asignado */}
                   {order.assignedToDeliveryId && order.deliveryPersonName && (
                     <div style={{
-                      padding: '0.75rem',
-                      backgroundColor: '#d1fae5',
-                      borderRadius: '0.5rem',
-                      border: '1px solid #10b981'
+                      display: 'grid',
+                      gap: '0.75rem'
                     }}>
-                      <p style={{
-                        fontSize: '0.875rem',
-                        color: '#065f46',
-                        fontWeight: '600',
-                        marginBottom: '0.25rem'
+                      <div style={{
+                        padding: '0.75rem',
+                        backgroundColor: '#d1fae5',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #10b981'
                       }}>
-                        🚚 Repartidor asignado
-                      </p>
-                      <p style={{ color: '#065f46', fontWeight: 'bold' }}>
-                        {order.deliveryPersonName}
-                      </p>
+                        <p style={{
+                          fontSize: '0.875rem',
+                          color: '#065f46',
+                          fontWeight: '600',
+                          marginBottom: '0.25rem'
+                        }}>
+                          🚚 Repartidor asignado
+                        </p>
+                        <p style={{ color: '#065f46', fontWeight: 'bold' }}>
+                          {order.deliveryPersonName}
+                        </p>
+                      </div>
+                      
+                      {/* Botón para chatear con el repartidor */}
+                      <button
+                        onClick={() => {
+                          const dId = order.assignedToDeliveryId || '';
+                          const dName = order.deliveryPersonName || '';
+                          const oCode = order.orderCode;
+                          navigate(`/chat?deliveryId=${dId}&deliveryName=${encodeURIComponent(dName)}&orderId=${oCode}`);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: '#667eea',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#5568d3';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#667eea';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        💬 Chatear con tu repartidor
+                      </button>
                     </div>
                   )}
 
@@ -603,7 +767,7 @@ const MyOrdersPage: React.FC = () => {
               )}
 
               {/* Timeline de Estado del Pedido */}
-              <OrderStatusTimeline status={order.status} />
+              <OrderStatusTimeline status={order.status} serviceType={order.serviceType} />
 
               {/* Información del Pedido */}
               <div style={{
