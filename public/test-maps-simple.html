@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Google Maps - CON API KEY</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+            font-size: 1.875rem;
+        }
+        
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
+        }
+        
+        .test-section {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .input-group {
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            color: #4b5563;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .result {
+            background: #eff6ff;
+            border: 2px solid #bfdbfe;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .result h3 {
+            color: #1e40af;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .result pre {
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-size: 0.875rem;
+        }
+        
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            z-index: 9999;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .pac-container {
+            border-radius: 0.5rem !important;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+            border: 1px solid #d1d5db !important;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+            z-index: 10000 !important;
+        }
+        
+        .pac-item {
+            padding: 0.75rem !important;
+            cursor: pointer !important;
+            color: #4b5563 !important;
+            transition: background 0.2s !important;
+        }
+        
+        .pac-item:hover {
+            background-color: #eff6ff !important;
+        }
+        
+        .pac-icon {
+            margin-top: 8px !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Prueba Google Maps - Autocompletado</h1>
+        <p class="subtitle">Con Google Maps Places API - Fresnillo, Zacatecas</p>
+        
+        <div class="test-section">
+            <h2>📍 Direcciones con Autocompletado</h2>
+            
+            <div class="input-group">
+                <label for="pickupAddress">🚩 Dirección de Recogida:</label>
+                <input type="text" id="pickupAddress" placeholder="Ej: Av. Hidalgo, Fresnillo, Zac." autocomplete="off">
+                <div class="autocomplete-suggestions" id="pickupSuggestions"></div>
+            </div>
+            
+            <div class="input-group">
+                <label for="deliveryAddress">🏁 Dirección de Entrega:</label>
+                <input type="text" id="deliveryAddress" placeholder="Ej: Juana Gallo, Fresnillo, Zac." autocomplete="off">
+                <div class="autocomplete-suggestions" id="deliverySuggestions"></div>
+            </div>
+            
+            <button onclick="buscarDistancia()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">🗺️ Calcular Distancia</button>
+        </div>
+        
+        <!-- Tabla de Precios -->
+        <div class="test-section" style="margin-top: 2rem;">
+            <h2 style="color: #667eea; margin-bottom: 1rem;">💰 Tabla de Tarifas por Distancia</h2>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <th style="padding: 1rem; text-align: left; border-radius: 0.5rem 0 0 0;">Distancia</th>
+                            <th style="padding: 1rem; text-align: left;">Tarifa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background: #f0fdf4; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 0.75rem;">Hasta 0.1 km (100 m)</td>
+                            <td style="padding: 0.75rem; font-weight: bold; color: #16a34a;">$30 MXN</td>
+                        </tr>
+                        <tr style="background: #eff6ff; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 0.75rem;">Hasta 1 km</td>
+                            <td style="padding: 0.75rem; font-weight: bold; color: #16a34a;">$30 MXN</td>
+                        </tr>
+                        <tr style="background: #f0fdf4; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 0.75rem;">Hasta 2 km</td>
+                            <td style="padding: 0.75rem; font-weight: bold; color: #16a34a;">$35 MXN</td>
+                        </tr>
+                        <tr style="background: #eff6ff; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 0.75rem;">Hasta 2.5 km</td>
+                            <td style="padding: 0.75rem; font-weight: bold; color: #16a34a;">$40 MXN</td>
+                        </tr>
+                        <tr style="background: #f0fdf4; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 0.75rem;">Hasta 3 km</td>
+                            <td style="padding: 0.75rem; font-weight: bold; color: #16a34a;">$45 MXN</td>
+                        </tr>
+                        <tr style="background: #eff6ff; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 0.75rem;">Hasta 5 km</td>
+                            <td style="padding: 0.75rem; font-weight: bold; color: #16a34a;">$50 MXN</td>
+                        </tr>
+                        <tr style="background: #fef3c7;">
+                            <td style="padding: 0.75rem;">Más de 5 km</td>
+                            <td style="padding: 0.75rem; font-weight: bold; color: #d97706;">$50 + $5/km adicional</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="result" id="result">
+            <h3>Resultado:</h3>
+            <pre id="resultContent"></pre>
+        </div>
+    </div>
+    
+    <!-- Google Maps API con tu API Key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCjqlvk5RqykmtVyjYwe6vF0QWxZ9RFRYE&libraries=places"></script>
+    
+    <script>
+        let autocompletePickup = null;
+        let autocompleteDelivery = null;
+        let selectedPickup = null;
+        let selectedDelivery = null;
+        
+        // Inicializar Google Maps Places Autocomplete
+        function initAutocomplete() {
+            console.log('Iniciando Google Maps Places...');
+            
+            if (!google || !google.maps || !google.maps.places) {
+                console.error('Google Maps Places no cargó');
+                alert('❌ Google Maps Places no está disponible.\n\nVerificá en la consola (F12) el error específico.');
+                return;
+            }
+            
+            console.log('✅ Google Maps Places cargó correctamente');
+            
+            // Configuración para Fresnillo, Zacatecas
+            const defaultBounds = {
+                north: 24.5,
+                south: 24.4,
+                east: -102.8,
+                west: -102.9
+            };
+            
+            const options = {
+                bounds: defaultBounds,
+                strictBounds: false,
+                types: ['geocode', 'establishment'],
+                componentRestrictions: { country: 'mx' }
+            };
+            
+            // Autocomplete para recogida
+            const pickupInput = document.getElementById('pickupAddress');
+            autocompletePickup = new google.maps.places.Autocomplete(pickupInput, options);
+            
+            autocompletePickup.addListener('place_changed', () => {
+                const place = autocompletePickup.getPlace();
+                console.log('\n=== PLACE_CHANGED (REC) ===');
+                console.log('Place object:', JSON.stringify(place, null, 2));
+                
+                if (!place) {
+                    console.error('❌ Place es null/undefined');
+                    return;
+                }
+                
+                if (!place.geometry) {
+                    console.error('❌ place.geometry es null/undefined - Usando búsqueda por texto');
+                    // Si no hay geometría, usamos geocodificación
+                    geocodeAddress(place.formatted_address || pickupInput.value).then(coords => {
+                        if (coords) {
+                            selectedPickup = coords;
+                            console.log('✅ Coordenadas obtenidas por geocoding:', selectedPickup);
+                        }
+                    });
+                    return;
+                }
+                
+                selectedPickup = {
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                    direccion: place.formatted_address
+                };
+                console.log('✅ Coordenadas guardadas:', selectedPickup);
+            });
+            
+            // Autocomplete para entrega
+            const deliveryInput = document.getElementById('deliveryAddress');
+            autocompleteDelivery = new google.maps.places.Autocomplete(deliveryInput, options);
+            
+            autocompleteDelivery.addListener('place_changed', () => {
+                const place = autocompleteDelivery.getPlace();
+                console.log('\n=== PLACE_CHANGED (ENT) ===');
+                console.log('Place object:', JSON.stringify(place, null, 2));
+                
+                if (!place) {
+                    console.error('❌ Place es null/undefined');
+                    return;
+                }
+                
+                if (!place.geometry) {
+                    console.error('❌ place.geometry es null/undefined - Usando búsqueda por texto');
+                    // Si no hay geometría, usamos geocodificación
+                    geocodeAddress(place.formatted_address || deliveryInput.value).then(coords => {
+                        if (coords) {
+                            selectedDelivery = coords;
+                            console.log('✅ Coordenadas obtenidas por geocoding:', selectedDelivery);
+                        }
+                    });
+                    return;
+                }
+                
+                selectedDelivery = {
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                    direccion: place.formatted_address
+                };
+                console.log('✅ Coordenadas guardadas:', selectedDelivery);
+            });
+            
+            console.log('✨ Autocompletado inicializado para ambos campos');
+        }
+        
+        // Esperar a que la página cargue
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAutocomplete);
+        } else {
+            setTimeout(initAutocomplete, 500);
+        }
+        
+        // Función de geocodificación para cuando no hay geometría
+        async function geocodeAddress(address) {
+            if (!google || !google.maps) {
+                console.error('Google Maps no disponible para geocoding');
+                return null;
+            }
+            
+            const geocoder = new google.maps.Geocoder();
+            
+            return new Promise((resolve) => {
+                geocoder.geocode({ address: address }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        resolve({
+                            lat: results[0].geometry.location.lat(),
+                            lng: results[0].geometry.location.lng(),
+                            direccion: results[0].formatted_address
+                        });
+                    } else {
+                        console.error('Geocoding falló:', status);
+                        resolve(null);
+                    }
+                });
+            });
+        }
+        
+        // Calcular distancia usando fórmula Haversine
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            console.log('\n--- Función calcularDistancia ---');
+            console.log('lat1:', lat1, 'lon1:', lon1);
+            console.log('lat2:', lat2, 'lon2:', lon2);
+            
+            const R = 6371; // Radio de la Tierra en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            
+            console.log('dLat:', dLat, 'dLon:', dLon);
+            
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            
+            console.log('a:', a);
+            
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distancia = R * c;
+            
+            console.log('c:', c, 'distancia:', distancia);
+            console.log('--- Fin calcularDistancia ---\n');
+            
+            return distancia;
+        }
+        
+        // Calcular tarifa según distancia
+        function calcularTarifa(distanciaKm) {
+            // Tabla de precios según distancia
+            if (distanciaKm <= 0.1) return 30;      // 0.1 metros o menos
+            if (distanciaKm <= 1) return 30;        // hasta 1 km
+            if (distanciaKm <= 2) return 35;        // hasta 2 km
+            if (distanciaKm <= 2.5) return 40;      // hasta 2.5 km
+            if (distanciaKm <= 3) return 45;        // hasta 3 km
+            if (distanciaKm <= 5) return 50;        // hasta 5 km
+            
+            // Para distancias mayores a 5 km, agregar $5 por cada km adicional
+            const kmAdicionales = Math.ceil(distanciaKm - 5);
+            return 50 + (kmAdicionales * 5);
+        }
+        
+        function buscarDistancia() {
+            console.log('\n=== CALCULANDO DISTANCIA ===');
+            console.log('Recogida:', selectedPickup);
+            console.log('Entrega:', selectedDelivery);
+            
+            if (!selectedPickup || !selectedDelivery) {
+                alert('Por favor seleccioná ambas direcciones de la lista de sugerencias');
+                return;
+            }
+            
+            // Verificar que las coordenadas sean números válidos
+            const lat1 = parseFloat(selectedPickup.lat);
+            const lng1 = parseFloat(selectedPickup.lng);
+            const lat2 = parseFloat(selectedDelivery.lat);
+            const lng2 = parseFloat(selectedDelivery.lng);
+            
+            console.log('Coordenadas para calcular:');
+            console.log(`Recogida: ${lat1}, ${lng1}`);
+            console.log(`Entrega: ${lat2}, ${lng2}`);
+            
+            if (isNaN(lat1) || isNaN(lng1) || isNaN(lat2) || isNaN(lng2)) {
+                alert('❌ Error: Coordenadas inválidas\n\n' +
+                      'Recogida: ' + JSON.stringify(selectedPickup) + '\n' +
+                      'Entrega: ' + JSON.stringify(selectedDelivery));
+                return;
+            }
+            
+            const distancia = calcularDistancia(lat1, lng1, lat2, lng2);
+            
+            console.log('Distancia calculada:', distancia, 'km');
+            
+            if (isNaN(distancia) || distancia === 0) {
+                alert('❌ Error al calcular la distancia\n\n' +
+                      'Distancia obtenida: ' + distancia + '\n' +
+                      'Verificá que las direcciones sean diferentes');
+                return;
+            }
+            
+            const costo = calcularTarifa(distancia);
+            
+            const resultado = {
+                '🚩 Recogida': selectedPickup.direccion,
+                '🏁 Entrega': selectedDelivery.direccion,
+                '📏 Distancia': distancia.toFixed(2) + ' km',
+                '💰 Costo del Envío': '$' + costo + ' MXN',
+                '📊 Tarifa aplicada': obtenerDetalleTarifa(distancia)
+            };
+            
+            console.log('Resultado final:', resultado);
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('resultContent').textContent = JSON.stringify(resultado, null, 2);
+        }
+        
+        function obtenerDetalleTarifa(distanciaKm) {
+            if (distanciaKm <= 0.1) return 'Tarifa mínima (0.1 m)';
+            if (distanciaKm <= 1) return 'Tarifa base (hasta 1 km)';
+            if (distanciaKm <= 2) return 'Tarifa (hasta 2 km)';
+            if (distanciaKm <= 2.5) return 'Tarifa (hasta 2.5 km)';
+            if (distanciaKm <= 3) return 'Tarifa (hasta 3 km)';
+            if (distanciaKm <= 5) return 'Tarifa (hasta 5 km)';
+            return 'Tarifa especial (+5 km)';
+        }
+    </script>
+</body>
+</html>
