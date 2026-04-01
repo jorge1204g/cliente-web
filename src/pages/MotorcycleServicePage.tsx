@@ -33,6 +33,7 @@ const MotorcycleServicePage: React.FC = () => {
   const pickupAutocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
   const deliveryAutocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
   const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
+  const googleLoadedRef = React.useRef(false); // Evitar carga múltiple
   
   // OCULTO - Variables necesarias para el código pero no usadas en UI visible
   const [_requiresPickup, _setRequiresPickup] = useState(false);
@@ -147,47 +148,33 @@ const MotorcycleServicePage: React.FC = () => {
     }
   }, []);
 
-  // 🗺️ Cargar Google Maps y configurar autocompletado (NUEVA API RECOMENDADA)
+  // 🗺️ Cargar Google Maps y configurar autocompletado (UNA SOLA VEZ)
   useEffect(() => {
+    // Evitar carga múltiple
+    if (googleLoadedRef.current) {
+      console.log('ℹ️ [GOOGLE MAPS] Ya está cargado, saltando...');
+      return;
+    }
+    
     const loadGoogleMaps = async () => {
       try {
+        console.log('🔄 [GOOGLE MAPS] Iniciando carga ÚNICA de Google Maps...');
+        
         const { Loader } = await import('@googlemaps/js-api-loader');
         const loader = new Loader({
           apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-          version: 'weekly',
+          version: 'weekly', // USAR weekly consistentemente
           libraries: ['places']
         });
         
         const google = await loader.load();
         setIsGoogleLoaded(true);
-        console.log('✅ [GOOGLE MAPS] API cargada correctamente');
+        googleLoadedRef.current = true;
+        console.log('✅ [GOOGLE MAPS] API cargada correctamente (UNA SOLA VEZ)');
         
-        // Configurar autocompletado para recogida usando NUEVA API RECOMENDADA
+        // Configurar autocompletado para recogida (USANDO API CLÁSICA QUE FUNCIONA)
         const pickupInput = document.getElementById('pickup-autocomplete') as HTMLInputElement;
-        if (pickupInput && google.maps.places.PlaceAutocompleteElement) {
-          // Usar PlaceAutocompleteElement (NUEVA API RECOMENDADA)
-          const autocomplete = new google.maps.places.PlaceAutocompleteElement(pickupInput, {
-            componentRestrictions: { country: 'mx' },
-            fields: ['geometry', 'formatted_address', 'name']
-          });
-          
-          autocomplete.addEventListener('gmp-placeselect', async (event: any) => {
-            const place = event.place;
-            if (place && place.formattedAddress) {
-              setPickupAddress(place.formattedAddress);
-              console.log('✅ [RECOGIDA] Dirección seleccionada:', place.formattedAddress);
-              
-              // Calcular distancia si hay dirección de entrega
-              if (deliveryAddressInput) {
-                await calculateDistance(pickupAddress, deliveryAddressInput);
-              }
-            }
-          });
-          
-          pickupAutocompleteRef.current = autocomplete as any;
-        } else if (pickupInput && google.maps.places.Autocomplete) {
-          // Fallback a Autocomplete clásico si PlaceAutocompleteElement no está disponible
-          console.warn('⚠️ [GOOGLE MAPS] PlaceAutocompleteElement no disponible, usando Autocomplete clásico');
+        if (pickupInput) {
           pickupAutocompleteRef.current = new google.maps.places.Autocomplete(pickupInput, {
             componentRestrictions: { country: 'mx' },
             fields: ['geometry', 'formatted_address', 'name']
@@ -205,34 +192,12 @@ const MotorcycleServicePage: React.FC = () => {
               }
             }
           });
+          console.log('✅ [RECOGIDA] Autocomplete configurado');
         }
         
-        // Configurar autocompletado para entrega usando NUEVA API RECOMENDADA
+        // Configurar autocompletado para entrega (USANDO API CLÁSICA QUE FUNCIONA)
         const deliveryInput = document.getElementById('delivery-autocomplete') as HTMLInputElement;
-        if (deliveryInput && google.maps.places.PlaceAutocompleteElement) {
-          // Usar PlaceAutocompleteElement (NUEVA API RECOMENDADA)
-          const autocomplete = new google.maps.places.PlaceAutocompleteElement(deliveryInput, {
-            componentRestrictions: { country: 'mx' },
-            fields: ['geometry', 'formatted_address', 'name']
-          });
-          
-          autocomplete.addEventListener('gmp-placeselect', async (event: any) => {
-            const place = event.place;
-            if (place && place.formattedAddress) {
-              setDeliveryAddressInput(place.formattedAddress);
-              console.log('✅ [ENTREGA] Dirección seleccionada:', place.formattedAddress);
-              
-              // Calcular distancia si hay dirección de recogida
-              if (pickupAddress) {
-                await calculateDistance(pickupAddress, place.formattedAddress);
-              }
-            }
-          });
-          
-          deliveryAutocompleteRef.current = autocomplete as any;
-        } else if (deliveryInput && google.maps.places.Autocomplete) {
-          // Fallback a Autocomplete clásico si PlaceAutocompleteElement no está disponible
-          console.warn('⚠️ [GOOGLE MAPS] PlaceAutocompleteElement no disponible, usando Autocomplete clásico');
+        if (deliveryInput) {
           deliveryAutocompleteRef.current = new google.maps.places.Autocomplete(deliveryInput, {
             componentRestrictions: { country: 'mx' },
             fields: ['geometry', 'formatted_address', 'name']
@@ -250,6 +215,7 @@ const MotorcycleServicePage: React.FC = () => {
               }
             }
           });
+          console.log('✅ [ENTREGA] Autocomplete configurado');
         }
         
       } catch (err) {
@@ -258,7 +224,7 @@ const MotorcycleServicePage: React.FC = () => {
     };
     
     loadGoogleMaps();
-  }, [pickupAddress, deliveryAddressInput]);
+  }, []); // Dependencia vacía = solo se ejecuta UNA VEZ
 
   // 🗺️ Calcular distancia entre dos direcciones
   const calculateDistance = async (origin: string, destination: string) => {
