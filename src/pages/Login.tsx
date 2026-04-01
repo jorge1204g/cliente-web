@@ -18,7 +18,8 @@ const Login: React.FC = () => {
       const success = await AuthService.login(email, password);
       
       if (success) {
-        navigate('/inicio');
+        // Redirigir a la pantalla de selección de servicios
+        navigate('/servicios');
       } else {
         setError('Correo o contraseña incorrectos');
       }
@@ -143,6 +144,12 @@ const Login: React.FC = () => {
               fontSize: '1rem',
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s'
+            }}
+            onClick={(e) => {
+              if (!loading) {
+                // Redirigir a la pantalla de selección de servicios después de login
+                setTimeout(() => navigate('/servicios'), 500);
+              }
             }}
           >
             {loading ? 'Iniciando...' : 'Iniciar Sesión'}
