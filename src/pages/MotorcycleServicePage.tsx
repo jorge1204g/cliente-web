@@ -147,7 +147,7 @@ const MotorcycleServicePage: React.FC = () => {
     }
   }, []);
 
-  // 🗺️ Cargar Google Maps y configurar autocompletado
+  // 🗺️ Cargar Google Maps y configurar autocompletado (NUEVA API RECOMENDADA)
   useEffect(() => {
     const loadGoogleMaps = async () => {
       try {
@@ -162,9 +162,32 @@ const MotorcycleServicePage: React.FC = () => {
         setIsGoogleLoaded(true);
         console.log('✅ [GOOGLE MAPS] API cargada correctamente');
         
-        // Configurar autocompletado para recogida
+        // Configurar autocompletado para recogida usando NUEVA API RECOMENDADA
         const pickupInput = document.getElementById('pickup-autocomplete') as HTMLInputElement;
-        if (pickupInput) {
+        if (pickupInput && google.maps.places.PlaceAutocompleteElement) {
+          // Usar PlaceAutocompleteElement (NUEVA API RECOMENDADA)
+          const autocomplete = new google.maps.places.PlaceAutocompleteElement(pickupInput, {
+            componentRestrictions: { country: 'mx' },
+            fields: ['geometry', 'formatted_address', 'name']
+          });
+          
+          autocomplete.addEventListener('gmp-placeselect', async (event: any) => {
+            const place = event.place;
+            if (place && place.formattedAddress) {
+              setPickupAddress(place.formattedAddress);
+              console.log('✅ [RECOGIDA] Dirección seleccionada:', place.formattedAddress);
+              
+              // Calcular distancia si hay dirección de entrega
+              if (deliveryAddressInput) {
+                await calculateDistance(pickupAddress, deliveryAddressInput);
+              }
+            }
+          });
+          
+          pickupAutocompleteRef.current = autocomplete as any;
+        } else if (pickupInput && google.maps.places.Autocomplete) {
+          // Fallback a Autocomplete clásico si PlaceAutocompleteElement no está disponible
+          console.warn('⚠️ [GOOGLE MAPS] PlaceAutocompleteElement no disponible, usando Autocomplete clásico');
           pickupAutocompleteRef.current = new google.maps.places.Autocomplete(pickupInput, {
             componentRestrictions: { country: 'mx' },
             fields: ['geometry', 'formatted_address', 'name']
@@ -184,9 +207,32 @@ const MotorcycleServicePage: React.FC = () => {
           });
         }
         
-        // Configurar autocompletado para entrega
+        // Configurar autocompletado para entrega usando NUEVA API RECOMENDADA
         const deliveryInput = document.getElementById('delivery-autocomplete') as HTMLInputElement;
-        if (deliveryInput) {
+        if (deliveryInput && google.maps.places.PlaceAutocompleteElement) {
+          // Usar PlaceAutocompleteElement (NUEVA API RECOMENDADA)
+          const autocomplete = new google.maps.places.PlaceAutocompleteElement(deliveryInput, {
+            componentRestrictions: { country: 'mx' },
+            fields: ['geometry', 'formatted_address', 'name']
+          });
+          
+          autocomplete.addEventListener('gmp-placeselect', async (event: any) => {
+            const place = event.place;
+            if (place && place.formattedAddress) {
+              setDeliveryAddressInput(place.formattedAddress);
+              console.log('✅ [ENTREGA] Dirección seleccionada:', place.formattedAddress);
+              
+              // Calcular distancia si hay dirección de recogida
+              if (pickupAddress) {
+                await calculateDistance(pickupAddress, place.formattedAddress);
+              }
+            }
+          });
+          
+          deliveryAutocompleteRef.current = autocomplete as any;
+        } else if (deliveryInput && google.maps.places.Autocomplete) {
+          // Fallback a Autocomplete clásico si PlaceAutocompleteElement no está disponible
+          console.warn('⚠️ [GOOGLE MAPS] PlaceAutocompleteElement no disponible, usando Autocomplete clásico');
           deliveryAutocompleteRef.current = new google.maps.places.Autocomplete(deliveryInput, {
             componentRestrictions: { country: 'mx' },
             fields: ['geometry', 'formatted_address', 'name']
