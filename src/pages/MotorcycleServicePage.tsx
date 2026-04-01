@@ -98,14 +98,21 @@ const MotorcycleServicePage: React.FC = () => {
                 
               // Extraer información de la dirección
               const road = data.address?.road || data.address?.pedestrian || '';
-              const hNumber = data.address?.house_number || '';
+              const hNumber = data.address?.house_number || 'S/N';
               const s = data.address?.suburb || data.address?.neighbourhood || data.address?.quarter || '';
               const c = data.address?.city || data.address?.town || data.address?.village || '';
               const p = data.address?.postcode || '';
               const st = data.address?.state || '';
                 
-              // NO llenar campos automáticamente - El usuario lo hará manualmente
-              console.log('ℹ️ [MOTORCYCLE] Dirección obtenida (NO se llena automáticamente):', { road, city: c });
+              // ✅ LLENAR campos automáticamente con la dirección obtenida
+              setStreet(road);
+              setHouseNumber(hNumber);
+              setSuburb(s);
+              setCity(c);
+              setPostcode(p);
+              setState(st);
+              
+              console.log('✅ [MOTORCYCLE] Dirección llenada automáticamente:', { road, city: c });
             } catch (err) {
               console.warn('⚠️ [MOTORCYCLE] No se pudo obtener la dirección exacta, pero las coordenadas están guardadas');
               console.error('   Error:', err);
