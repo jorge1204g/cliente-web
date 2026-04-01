@@ -22,12 +22,15 @@ export interface ClientOrder {
   };
   items?: string;
   image?: string;
+  distance?: number | string; // Distancia calculada (puede ser número o string formateado)
   distanceKm?: number;
   deliveryCost?: number;
   orderCode: string;
   status: string;
   assignedToDeliveryId?: string;
   deliveryPersonName?: string;
+  riderName?: string; // Nombre del repartidor (alias)
+  riderPhone?: string; // Teléfono del repartidor
   createdAt: number;
   notes?: string;
   confirmationCode?: string; // Código de confirmación de 4 dígitos
@@ -260,6 +263,25 @@ class OrderService {
       console.error('Error cancelling order:', error);
       return false;
     }
+  }
+
+  // Escuchar cambios en tiempo real de un pedido específico
+  observeOrder(orderId: string, callback: (order: ClientOrder | null) => void): () => void {
+    const orderRef = ref(database, `client_orders/${orderId}`);
+    
+    onValue(orderRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        callback(data as ClientOrder);
+      } else {
+        callback(null);
+      }
+    });
+
+    // Función para detener la observación
+    return () => {
+      console.log('Deteniendo observación del pedido:', orderId);
+    };
   }
 
   // Eliminar pedido permanentemente

@@ -501,6 +501,8 @@ const MotorcycleServicePage: React.FC = () => {
         },
         // Descripción del viaje
         items: items || 'Viaje en motocicleta',
+        // Distancia y precio calculados
+        distance: distance ?? undefined,
         // Notas adicionales con precio
         notes: `Servicio de motocicleta - Viaje rápido y seguro. Distancia: ${distance || 'N/A'} km. Tarifa: $${price || 'N/A'} MXN`
       };
@@ -520,7 +522,8 @@ const MotorcycleServicePage: React.FC = () => {
 
         if (orderId) {
           alert('✅ Solicitud de viaje creada exitosamente\n\nNúmero de pedido: ' + orderId.slice(-6));
-          navigate('/mis-pedidos');
+          // Redirigir a la página de seguimiento específica para motocicleta
+          navigate(`/seguimiento-motocicleta/${orderId}`);
         } else {
           console.error('❌ OrderService retornó null');
           setError('Error al crear la solicitud de viaje. Intenta de nuevo.');
@@ -718,46 +721,49 @@ const MotorcycleServicePage: React.FC = () => {
             </section>
           ) : null}
 
-          {/* SECCIÓN OCULTA: Datos del pasajero (YA LOS TENEMOS - NO MOSTRAR) */}
-          <section style={{ display: 'none', marginBottom: '2rem' }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #3b82f6',
-              paddingBottom: '0.5rem'
-            }}>
-              👤 Datos del Pasajero
-            </h2>
-
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-              <div>
-                <label style={labelStyle}>Nombre completo *</label>
-                <input
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Juan Pérez"
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle}>Teléfono *</label>
-                <input
-                  type="tel"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="492 123 4567"
-                />
-              </div>
-            </div>
-          </section>
+          {/* SECCIÓN 3: Formulario completo (solo después de confirmar) */}
+          {showFullForm && (
             <>
+              {/* Datos del pasajero - OCULTOS (YA LOS TENEMOS) */}
+              <section style={{ display: 'none', marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '1rem',
+                  borderBottom: '2px solid #3b82f6',
+                  paddingBottom: '0.5rem'
+                }}>
+                  👤 Datos del Pasajero
+                </h2>
+
+                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                  <div>
+                    <label style={labelStyle}>Nombre completo *</label>
+                    <input
+                      type="text"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      required
+                      style={inputStyle}
+                      placeholder="Juan Pérez"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Teléfono *</label>
+                    <input
+                      type="tel"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                      required
+                      style={inputStyle}
+                      placeholder="492 123 4567"
+                    />
+                  </div>
+                </div>
+              </section>
+
               {/* Información del Servicio - Oculta pero necesaria */}
               <section style={{ display: 'none', marginBottom: '2rem' }}>
                 <h2 style={{

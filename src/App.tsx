@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage';
 import ChatPage from './pages/ChatPage';
 import ServiceSelectionPage from './pages/ServiceSelectionPage';
 import MotorcycleServicePage from './pages/MotorcycleServicePage';
+import MotorcycleOrderTrackingPage from './pages/MotorcycleOrderTrackingPage';
 
 const App: React.FC = () => {
   return (
@@ -21,6 +22,7 @@ const App: React.FC = () => {
           <Route path="/registro" element={<Register />} />
           <Route path="/servicios" element={<ServiceSelectionPage />} />
           <Route path="/servicio-motocicleta" element={<MotorcycleServicePage />} />
+          <Route path="/seguimiento-motocicleta/:orderId" element={<MotorcycleOrderTrackingPage />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
           <Route path="/inicio" element={<Dashboard />} />
           <Route path="/crear-pedido" element={<CreateOrderPage />} />
