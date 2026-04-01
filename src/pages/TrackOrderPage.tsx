@@ -79,52 +79,53 @@ const TrackOrderPage: React.FC = () => {
       if ('geolocation' in navigator) {
         try {
           console.log('📍 [PERMISOS] Geolocalización disponible en este navegador');
-          const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
           
-          console.log('📊 [PERMISOS] Estado actual del permiso:', permission.state);
+          // SIEMPRE solicitar ubicación, sin importar permisos previos
+          console.log('⏳ [PERMISOS] Solicitando ubicación actual al usuario...');
+          console.log('💡 [INFO] Debería aparecer el prompt del navegador preguntando si permites la ubicación');
           
-          if (permission.state === 'granted') {
-            console.log('✅ [PERMISOS] Ya tienes permiso concedido anteriormente');
-            console.log('💡 [INFO] Por eso no ves el prompt - el navegador recordó tu decisión');
-            // Obtener ubicación actual para centrar el mapa
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                console.log('✅ [UBICACIÓN] Ubicación obtenida:', position.coords);
-              },
-              (error) => {
-                console.warn('⚠️ [ERROR] No se pudo obtener ubicación:', error.message);
-              },
-              { enableHighAccuracy: true, timeout: 10000 }
-            );
-          } else if (permission.state === 'prompt') {
-            console.log('⏳ [PERMISOS] Mostrando prompt al usuario...');
-            console.log('💡 [INFO] Deberías ver un mensaje del navegador preguntando si permites la ubicación');
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                console.log('✅ [UBICACIÓN] Permiso concedido. Ubicación:', position.coords);
-                console.log('🎉 [INFO] Ahora el mapa puede centrarse en tu ubicación');
-              },
-              (error) => {
-                console.warn('⚠️ [PERMISOS] Usuario denegó el permiso:', error.code, error.message);
-                if (error.code === 1) {
-                  console.log('ℹ️ [INFO] Puedes cambiar esta decisión en la configuración del navegador');
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const coords = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+              };
+              
+              console.log('✅ [UBICACIÓN] Permiso concedido. Ubicación:', coords);
+              console.log('🎉 [INFO] Ahora el mapa puede centrarse en tu ubicación');
+              
+              // GUARDAR coordenadas en Firebase para este pedido
+              if (order?.id) {
+                try {
+                  const { ref, update } = await import('firebase/database');
+                  const orderRef = ref(database, `orders/${order.id}`);
+                  
+                  console.log('💾 [FIREBASE] Guardando coordenadas del cliente en Firebase...');
+                  
+                  await update(orderRef, {
+                    'customerLocation.latitude': coords.latitude,
+                    'customerLocation.longitude': coords.longitude,
+                    'customerLocation.timestamp': Date.now(),
+                    'customerLocation.accuracy': coords.accuracy
+                  });
+                  
+                  console.log('✅ [FIREBASE] Coordenadas guardadas exitosamente en Firebase');
+                  console.log('📊 [INFO] El restaurante ahora puede ver la ubicación exacta del cliente');
+                  
+                } catch (error: any) {
+                  console.error('❌ [FIREBASE] Error al guardar coordenadas:', error.message);
                 }
-              },
-              { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            );
-          } else if (permission.state === 'denied') {
-            console.warn('❌ [PERMISOS] Permiso denegado previamente por el usuario');
-            console.log('💡 [INFO] El navegador recordó que bloqueaste el permiso');
-            console.log('ℹ️ [INFO] Para cambiar: Configuración → Privacidad → Ubicación');
-          }
-          
-          // Mostrar información útil para debugging
-          console.group('🔍 [DEBUG] Cómo verificar permisos');
-          console.log('1. Abre la consola (F12)');
-          console.log('2. Busca los mensajes con [PERMISOS]');
-          console.log('3. El estado debería ser: "granted", "prompt", o "denied"');
-          console.log('4. Si es "granted" o "denied", el navegador recordó tu decisión anterior');
-          console.groupEnd();
+              }
+            },
+            (error) => {
+              console.warn('⚠️ [PERMISOS] Usuario denegó el permiso:', error.code, error.message);
+              if (error.code === 1) {
+                console.log('ℹ️ [INFO] El usuario bloqueó el permiso. Puedes cambiar esta decisión en la configuración del navegador');
+              }
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          );
           
         } catch (err: any) {
           console.error('❌ [ERROR] Error al solicitar permiso:', err.message);
