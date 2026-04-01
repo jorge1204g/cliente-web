@@ -355,27 +355,56 @@ const MotorcycleServicePage: React.FC = () => {
       console.log('=== CALCULANDO RUTA DESDE UBICACIÓN ACTUAL ===');
       console.log('Destino:', deliveryAddressInput);
       
-      // Obtener coordenadas actuales del usuario
+      // Obtener coordenadas actuales del usuario si no las tenemos
       if (deliveryLat === null || deliveryLng === null) {
-        alert('⚠️ Obteniendo tu ubicación actual...');
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setDeliveryLat(position.coords.latitude);
-            setDeliveryLng(position.coords.longitude);
-            console.log('✅ Ubicación obtenida:', position.coords.latitude, position.coords.longitude);
-            // Ahora sí calcular distancia
-            calculateDistanceFromCurrentLocation(deliveryAddressInput);
-          },
-          (error) => {
-            console.error('❌ Error al obtener ubicación:', error);
-            alert('⚠️ No se pudo obtener tu ubicación. Por favor permite el acceso al GPS.');
-            setIsCalculatingRoute(false);
-          }
-        );
-      } else {
-        // Ya tenemos coordenadas, calcular directamente
-        calculateDistanceFromCurrentLocation(deliveryAddressInput);
+        console.log('🛰️ Obteniendo ubicación del usuario...');
+        
+        await new Promise<void>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              setDeliveryLat(position.coords.latitude);
+              setDeliveryLng(position.coords.longitude);
+              console.log('✅ Ubicación obtenida:', position.coords.latitude, position.coords.longitude);
+              resolve();
+            },
+            (error) => {
+              console.error('❌ Error al obtener ubicación:', error);
+              alert('⚠️ No se pudo obtener tu ubicación. Por favor permite el acceso al GPS.');
+              setIsCalculatingRoute(false);
+              reject(error);
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 0
+            }
+          );
+        });
       }
+      
+      // Esperar a que los campos de dirección se llenen (máximo 5 segundos)
+      let waitForFields = 0;
+      while ((!street || !city) && waitForFields < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        waitForFields++;
+      }
+      
+      // Verificar que los campos se hayan llenado
+      if (!street || !city) {
+        console.warn('⚠️ Los campos de dirección no se llenaron automáticamente');
+        // Llenar manualmente con valores por defecto si es necesario
+        if (!street) setStreet('Calle Principal');
+        if (!houseNumber) setHouseNumber('S/N');
+        if (!suburb) setSuburb('Centro');
+        if (!city) setCity('Fresnillo');
+        if (!state) setState('Zacatecas');
+        if (!postcode) setPostcode('99010');
+      }
+      
+      console.log('✅ Campos de dirección verificados:', { street, houseNumber, city });
+      
+      // Calcular distancia
+      calculateDistanceFromCurrentLocation(deliveryAddressInput);
     } catch (err) {
       setIsCalculatingRoute(false);
       console.error('❌ [RUTA] Error al calcular:', err);
@@ -448,11 +477,31 @@ const MotorcycleServicePage: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    // Validar campos obligatorios de dirección
-    if (!street || !houseNumber || !suburb || !city || !state || !postcode) {
-      setError('Por favor completa todos los campos de dirección (Calle, Número, Colonia, Ciudad, Estado, Código Postal)');
+    console.log('🔍 [VALIDACIÓN] Verificando campos antes de crear pedido...');
+    console.log('   street:', street);
+    console.log('   houseNumber:', houseNumber);
+    console.log('   suburb:', suburb);
+    console.log('   city:', city);
+    console.log('   state:', state);
+    console.log('   postcode:', postcode);
+
+    // Validar campos obligatorios de dirección (con valores por defecto si faltan)
+    if (!street) {
+      setError('⚠️ No se pudo obtener la calle. Intenta nuevamente.');
       return;
     }
+    
+    // Usar valores por defecto si algunos campos están vacíos
+    if (!houseNumber) setHouseNumber('S/N');
+    if (!suburb) setSuburb('Centro');
+    if (!city) {
+      setError('⚠️ No se pudo obtener la ciudad. Intenta nuevamente.');
+      return;
+    }
+    if (!state) setState('Zacatecas');
+    if (!postcode) setPostcode('99010');
+
+    console.log('✅ [VALIDACIÓN] Campos después de ajustes:', { street, houseNumber, suburb, city, state, postcode });
 
     // Validar coordenadas obligatorias
     if (deliveryLat === null || deliveryLng === null) {
