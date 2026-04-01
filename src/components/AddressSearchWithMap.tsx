@@ -32,6 +32,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   const [coordinatesInput, setCoordinatesInput] = useState('');
   const [hasGPSCoords, setHasGPSCoords] = useState(false);
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
+  const [showAutoClickNotification, setShowAutoClickNotification] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteInstance = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
@@ -139,6 +140,19 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   // Geocodificación inversa con Google Maps
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
+      // Evitar múltiples llamadas con coordenadas muy similares (menos de 1 metro de diferencia)
+      if (selectedLocation) {
+        const latDiff = Math.abs(selectedLocation.lat - lat);
+        const lngDiff = Math.abs(selectedLocation.lng - lng);
+        
+        // Si la diferencia es menor a 0.00001 (~1 metro), no hacer geocodificación
+        if (latDiff < 0.00001 && lngDiff < 0.00001) {
+          console.log('ℹ️ [REVERSE GEOCODE] Coordenadas muy similares, omitiendo:', { lat, lng });
+          return;
+        }
+      }
+      
+      console.log('🗺️ [REVERSE GEOCODE] Iniciando geocodificación:', { lat, lng });
       const geocoder = new google.maps.Geocoder();
       
       await new Promise<void>((resolve, reject) => {
@@ -182,6 +196,12 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
               postcode: postcode,
               lat,
               lng
+            });
+
+            console.log('✅ [REVERSE GEOCODE] Dirección enviada al padre:', {
+              street: road,
+              city: city,
+              lat, lng
             });
 
             resolve();
@@ -348,14 +368,102 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
   // const handleLongitudeBlur = () => {...}
   // OCULTO - useEffect ya no usado
 
-  // 🛰️ Auto-click en botón GPS al cargar el componente (solo una vez)
+  // 🛰️ Auto-obtener ubicación al cargar el componente - TOTALMENTE AUTOMÁTICO
   useEffect(() => {
-    console.log('🛰️ Auto-solicitando ubicación GPS al cargar...');
+    console.log('🛰️ [ADDRESS MAP] INICIANDO PROCESO AUTOMÁTICO DE UBICACIÓN...');
     
-    // Pequeño delay para asegurar que el componente esté completamente renderizado
+    // Función para obtener ubicación con reintentos automáticos
+    const obtenerUbicacionAutomatica = (intentos: number = 0) => {
+      const MAX_INTENTOS = 3;
+      
+      if (intentos >= MAX_INTENTOS) {
+        console.warn('⚠️ [ADDRESS MAP] Máximo de intentos alcanzado');
+        return;
+      }
+      
+      console.log(`🛰️ [ADDRESS MAP] Intento ${intentos + 1} de ${MAX_INTENTOS}...`);
+      
+      if (!navigator.geolocation) {
+        console.warn('⚠️ [ADDRESS MAP] Geolocalización no disponible en este navegador');
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          console.log('✅ [ADDRESS MAP] Ubicación obtenida en intento', intentos + 1, ':', `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+          
+          // Poner coordenadas en el campo
+          setCoordinatesInput(`${lat}, ${lng}`);
+          setHasGPSCoords(true);
+          
+          // Mover el mapa
+          setSelectedLocation({ lat, lng });
+          
+          if (mapInstance) {
+            mapInstance.panTo({ lat, lng });
+            mapInstance.setZoom(16);
+          } else {
+            // Si el mapa aún no está listo, esperar un poco y reintentar
+            setTimeout(() => {
+              const mapElement = document.getElementById('map');
+              if (mapElement && google.maps.Map) {
+                const map = new google.maps.Map(mapElement, {
+                  center: { lat, lng },
+                  zoom: 16
+                });
+                setMapInstance(map);
+              }
+            }, 500);
+          }
+          
+          // Hacer geocodificación inversa
+          reverseGeocode(lat, lng);
+          
+          console.log('💡 [ADDRESS MAP] Coordenadas GPS establecidas - Búsqueda automática iniciada');
+        },
+        (error) => {
+          console.warn('⚠️ [ADDRESS MAP] Error en intento', intentos + 1, ':', error.message);
+          
+          // Reintentar automáticamente después de 2 segundos
+          setTimeout(() => {
+            obtenerUbicacionAutomatica(intentos + 1);
+          }, 2000);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        }
+      );
+    };
+    
+    // Iniciar proceso automático con pequeño delay para asegurar que el componente esté listo
     const timer = setTimeout(() => {
-      getCurrentLocation();
-    }, 500);
+      // Primero intentar obtener ubicación directamente
+      obtenerUbicacionAutomatica(0);
+      
+      // Simultáneamente, buscar y hacer click en el botón azul si existe
+      setTimeout(() => {
+        const botonAzulGPS = document.querySelector('button[textContent*="🛰️ Usar mi ubicación actual"]') as HTMLButtonElement;
+        
+        if (botonAzulGPS) {
+          console.log('🔵 [ADDRESS MAP] Botón azul encontrado, haciendo click automático...');
+          
+          // Verificar si el botón está habilitado
+          if (!botonAzulGPS.disabled) {
+            botonAzulGPS.click();
+            console.log('✅ [ADDRESS MAP] Click automático realizado en botón azul');
+          } else {
+            console.log('⚠️ [ADDRESS MAP] Botón azul está deshabilitado');
+          }
+        } else {
+          console.log('ℹ️ [ADDRESS MAP] Botón azul no encontrado en el DOM');
+        }
+      }, 1500); // Esperar 1.5 segundos para que el botón esté renderizado
+    }, 800);
     
     return () => clearTimeout(timer);
   }, []); // Solo se ejecuta al montar
@@ -407,7 +515,32 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      {/* CAMPO DE COORDENADAS CON BOTÓN GPS */}
+      {/* LEYENDA FLOTANTE - CLICKS AUTOMÁTICOS */}
+      {showAutoClickNotification && (
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          backgroundColor: 'rgba(34, 197, 94, 0.95)',
+          color: 'white',
+          padding: '1.5rem 2rem',
+          borderRadius: '1rem',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+          zIndex: 99999,
+          fontSize: '1.1rem',
+          fontWeight: '700',
+          textAlign: 'center',
+          border: '3px solid #16a34a',
+          minWidth: '300px'
+        }}>
+          🟢 <strong>BUSCANDO DIRECCIÓN...</strong><br/>
+          <span style={{ fontSize: '0.9rem', marginTop: '0.5rem', display: 'block' }}>Click automático en proceso</span>
+        </div>
+      )}
+      
+      {/* OCULTO - Campos de coordenadas separadas (pero funcionan) */}
+      <div style={{ display: 'none' }}>
       <div style={{
         padding: '1rem',
         backgroundColor: '#f0fdf4',
@@ -458,6 +591,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
           </button>
         </div>
 
+        {/* OCULTO - Botón azul de GPS ya no es necesario porque todo es automático
         <button
           type="button"
           onClick={getCurrentLocation}
@@ -480,6 +614,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
         >
           🛰️ Usar mi ubicación actual
         </button>
+        */}
 
         {hasGPSCoords && (
           <p style={{
@@ -500,6 +635,8 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
           💡 Formato: latitud, longitud (ejemplo: 23.156, -102.345). Presiona Enter para buscar.
         </p>
       </div>
+      </div>
+      {/* FIN DE OCULTO - Ahora se muestra el mapa */}
 
       {/* OCULTO - Sección de coordenadas separadas ya no usada */}
       {/*

@@ -281,6 +281,25 @@ const MyOrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<ClientOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState<{ [key: string]: number }>({});
+
+  // Función para calcular el tiempo restante (5 minutos desde la creación)
+  const calculateTimeRemaining = (createdAt: number): number => {
+    const fiveMinutes = 5 * 60 * 1000; // 5 minutos en milisegundos
+    const now = Date.now();
+    const createdAtTime = typeof createdAt === 'number' ? createdAt : new Date(createdAt).getTime();
+    const elapsed = now - createdAtTime;
+    const remaining = Math.max(0, fiveMinutes - elapsed);
+    return remaining;
+  };
+
+  // Formatear tiempo restante a MM:SS
+  const formatTimeRemaining = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (!AuthService.isAuthenticated()) {
@@ -301,6 +320,31 @@ const MyOrdersPage: React.FC = () => {
       // Cleanup si es necesario
     };
   }, [navigate]);
+
+  // Efecto para actualizar el temporizador cada segundo
+  useEffect(() => {
+    // Calcular tiempo restante inicial
+    const initialTimes: { [key: string]: number } = {};
+    orders.forEach(order => {
+      if ((order.status === 'pending' || order.status === 'PENDING' || order.status === 'MANUAL_ASSIGNED') && !order.assignedToDeliveryId) {
+        initialTimes[order.id!] = calculateTimeRemaining(order.createdAt);
+      }
+    });
+    setTimeRemaining(initialTimes);
+
+    // Actualizar cada segundo
+    const interval = setInterval(() => {
+      const updatedTimes: { [key: string]: number } = {};
+      orders.forEach(order => {
+        if ((order.status === 'pending' || order.status === 'PENDING' || order.status === 'MANUAL_ASSIGNED') && !order.assignedToDeliveryId) {
+          updatedTimes[order.id!] = calculateTimeRemaining(order.createdAt);
+        }
+      });
+      setTimeRemaining(updatedTimes);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [orders]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -598,7 +642,79 @@ const MyOrdersPage: React.FC = () => {
                       </p>
                     </div>
                   )}
+                  
+                  {/* TEMPORIZADOR DE 5 MINUTOS - Solo para pedidos pendientes */}
+                  {((order.status === 'pending' || order.status === 'PENDING' || order.status === 'MANUAL_ASSIGNED') && !order.assignedToDeliveryId && timeRemaining[order.id!] !== undefined) && (
+                    <div style={{
+                      display: 'inline-block',
+                      padding: '0.75rem 1rem',
+                      backgroundColor: timeRemaining[order.id!] === 0 
+                        ? '#fee2e2'  // Rojo si expiró
+                        : timeRemaining[order.id!] < 120000  // Menos de 2 minutos
+                          ? '#fef3c7'  // Amarillo si queda poco tiempo
+                          : '#eff6ff', // Azul normal
+                      borderRadius: '0.5rem',
+                      border: `1px solid ${timeRemaining[order.id!] === 0 
+                        ? '#fecaca' 
+                        : timeRemaining[order.id!] < 120000 
+                          ? '#fcd34d' 
+                          : '#bfdbfe'}`,
+                      marginTop: '0.5rem'
+                    }}>
+                      {timeRemaining[order.id!] === 0 ? (
+                        <div>
+                          <p style={{
+                            fontSize: '0.875rem',
+                            fontWeight: 'bold',
+                            color: '#991b1b',
+                            margin: '0 0 0.25rem 0'
+                          }}>
+                            ⚠️ Tiempo de espera agotado
+                          </p>
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: '#991b1b',
+                            margin: 0,
+                            maxWidth: '400px'
+                          }}>
+                            En este momento no contamos con repartidores disponibles para aceptar tu orden. 
+                            Por favor, intenta más tarde o contacta a soporte.
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p style={{
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: timeRemaining[order.id!] < 120000 ? '#92400e' : '#1e40af',
+                            margin: '0 0 0.25rem 0'
+                          }}>
+                            ⏱️ Tiempo estimado de aceptación:
+                          </p>
+                          <p style={{
+                            fontSize: '1.25rem',
+                            fontWeight: 'bold',
+                            color: timeRemaining[order.id!] < 120000 ? '#b45309' : '#1e40af',
+                            margin: 0,
+                            fontFamily: 'monospace'
+                          }}>
+                            {formatTimeRemaining(timeRemaining[order.id!]!)}
+                          </p>
+                          {timeRemaining[order.id!]! < 120000 && (
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: '#b45309',
+                              margin: '0.25rem 0 0 0'
+                            }}>
+                              ⚠️ ¡Queda poco tiempo!
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+
                 <div style={{
                   backgroundColor: getStatusColor(order.status),
                   color: 'white',
@@ -646,6 +762,8 @@ const MyOrdersPage: React.FC = () => {
                           </p>
                         </div>
                       )}
+                      {/* OCULTO - Costo de envío ya no se muestra al cliente */}
+                      {/* 
                       {order.deliveryCost && (
                         <div>
                           <p style={{
@@ -663,6 +781,7 @@ const MyOrdersPage: React.FC = () => {
                           </p>
                         </div>
                       )}
+                      */}
                     </div>
                   )}
 
@@ -788,6 +907,54 @@ const MyOrdersPage: React.FC = () => {
                     {order.deliveryAddress}
                   </p>
                 </div>
+
+                {/* Botón de compartir seguimiento */}
+                <button
+                  onClick={() => {
+                    const trackingUrl = `https://cliente-web-mu.vercel.app/seguimiento?codigo=${order.orderCode}`;
+                    const message = `¡Hola! Tu pedido #${order.orderCode} está en proceso.\nCódigo de confirmación: ${order.confirmationCode || 'N/A'}\n\nSíguelo en tiempo real:\n${trackingUrl}`;
+                    
+                    if (navigator.share) {
+                      navigator.share({
+                        title: `Mi Pedido #${order.orderCode}`,
+                        text: message,
+                        url: trackingUrl
+                      }).catch(() => {
+                        navigator.clipboard.writeText(trackingUrl);
+                        alert('Link copiado al portapapeles!');
+                      });
+                    } else {
+                      navigator.clipboard.writeText(message);
+                      alert('Mensaje copiado al portapapeles!');
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontSize: '0.95rem',
+                    marginTop: '0.5rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#059669';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#10b981';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  📤 Compartir Link de Seguimiento
+                </button>
 
                 {order.items && (
                   <div>

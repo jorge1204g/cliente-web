@@ -1,5 +1,6 @@
-import { ref, set, onValue, query, orderByChild, get } from 'firebase/database';
-import { database } from './Firebase';
+import { ref as databaseRef, set, onValue, query, orderByChild, get } from 'firebase/database';
+import { database, storage } from './Firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export interface Message {
   id: string;
@@ -10,8 +11,9 @@ export interface Message {
   message: string;
   timestamp: number;
   isRead: boolean;
-  messageType: 'TEXT' | 'SYSTEM';
+  messageType: 'TEXT' | 'SYSTEM' | 'IMAGE';
   orderId?: string; // Para vincular el mensaje con un pedido específico
+  imageUrl?: string; // URL de la imagen si messageType es 'IMAGE'
 }
 
 class MessageService {
@@ -34,13 +36,14 @@ class MessageService {
     receiverName: string,
     message: string,
     orderId?: string,
-    messageType: 'TEXT' | 'SYSTEM' = 'TEXT'
+    messageType: 'TEXT' | 'SYSTEM' | 'IMAGE' = 'TEXT',
+    imageUrl?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
       console.log('Enviando mensaje de:', senderId, 'a:', receiverId);
       
-      // Crear referencia para nuevo mensaje
-      const newMessageRef = ref(database, `messages/${Date.now()}_${senderId}`);
+      // Crear referencia para nuevo mensaje en la base de datos
+      const newMessageRef = databaseRef(database, `messages/${Date.now()}_${senderId}`);
       
       const messageObject: Message = {
         id: newMessageRef.key || `${Date.now()}_${senderId}`,
@@ -52,7 +55,8 @@ class MessageService {
         timestamp: Date.now(),
         isRead: false,
         messageType,
-        orderId
+        orderId,
+        imageUrl: imageUrl || '' // Usar string vacío si es undefined
       };
       
       // Guardar en Firebase
@@ -71,9 +75,74 @@ class MessageService {
     }
   }
 
+  // Enviar imagen
+  async sendImage(
+    senderId: string,
+    senderName: string,
+    receiverId: string,
+    receiverName: string,
+    imageBase64: string,
+    orderId?: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('Enviando imagen de:', senderId, 'a:', receiverId);
+      
+      // Convertir Base64 a Blob
+      const response = await fetch(imageBase64);
+      const blob = await response.blob();
+      
+      // Crear nombre único para la imagen
+      const imageName = `images/${Date.now()}_${senderId}_${Math.random().toString(36).substring(7)}.jpg`;
+      const imageRef = storageRef(storage, imageName);
+      
+      console.log('📦 [DEBUG] Subiendo imagen a Storage:', imageName);
+      
+      // Subir imagen a Firebase Storage
+      await uploadBytes(imageRef, blob);
+      
+      // Obtener URL de descarga
+      const imageUrl = await getDownloadURL(imageRef);
+      
+      console.log('✅ [DEBUG] Imagen subida exitosamente. URL:', imageUrl.substring(0, 50) + '...');
+      
+      // Crear referencia para nuevo mensaje en la base de datos
+      const newMessageRef = databaseRef(database, `messages/${Date.now()}_${senderId}`);
+      
+      const messageObject: Message = {
+        id: newMessageRef.key || `${Date.now()}_${senderId}`,
+        senderId,
+        senderName,
+        receiverId,
+        receiverName,
+        message: '📷 Imagen enviada',
+        timestamp: Date.now(),
+        isRead: false,
+        messageType: 'IMAGE',
+        orderId,
+        imageUrl // URL de Firebase Storage en lugar de Base64
+      };
+      
+      // Guardar en Firebase Database
+      await set(newMessageRef, messageObject);
+      
+      return {
+        success: true,
+        message: 'Imagen enviada exitosamente'
+      };
+    } catch (error: any) {
+      console.error('❌ Error enviando imagen:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al enviar la imagen'
+      };
+    }
+  }
+
   // Escuchar mensajes entre dos usuarios en tiempo real
   listenMessages(userId1: string, userId2: string, callback: (messages: Message[]) => void) {
-    const messagesRef = ref(database, 'messages');
+    const messagesRef = databaseRef(database, 'messages');
+    
+    console.log('🔍 [listenMessages] userId1:', userId1, 'userId2:', userId2);
     
     // Crear query para obtener mensajes entre los dos usuarios
     const messagesQuery = query(
@@ -86,14 +155,35 @@ class MessageService {
         const allMessages = snapshot.val();
         const messagesArray: Message[] = [];
         
+        console.log('📦 [listenMessages] Total de mensajes en Firebase:', Object.keys(allMessages).length);
+        console.log('═══════════════════════════════════════════════');
+        
         for (const messageId in allMessages) {
           const msg = allMessages[messageId];
           
+          console.log('\n📨 Mensaje revisando:');
+          console.log('   ID:', messageId);
+          console.log('   senderId:', msg.senderId);
+          console.log('   receiverId:', msg.receiverId);
+          console.log('   message:', msg.message);
+          
           // Filtrar mensajes entre los dos usuarios
-          if (
-            (msg.senderId === userId1 && msg.receiverId === userId2) ||
-            (msg.senderId === userId2 && msg.receiverId === userId1)
-          ) {
+          const match = (msg.senderId === userId1 && msg.receiverId === userId2) ||
+                       (msg.senderId === userId2 && msg.receiverId === userId1);
+          
+          console.log('   ¿Coincide?', match ? '✅ SÍ' : '❌ NO');
+          console.log('   Comparación:');
+          console.log('     - (senderId === userId1):', msg.senderId === userId1);
+          console.log('     - (receiverId === userId2):', msg.receiverId === userId2);
+          console.log('     - (senderId === userId2):', msg.senderId === userId2);
+          console.log('     - (receiverId === userId1):', msg.receiverId === userId1);
+          
+          if (match) {
+            console.log('\n✅ [MATCH] Mensaje que coincide:');
+            console.log('   ├── senderId:', msg.senderId);
+            console.log('   ├── receiverId:', msg.receiverId);
+            console.log('   └── message:', msg.message);
+            
             const messageObj: Message = {
               id: messageId,
               senderId: msg.senderId || '',
@@ -108,13 +198,20 @@ class MessageService {
             };
             
             messagesArray.push(messageObj);
+          } else {
+            console.log('\n❌ [NO MATCH] Mensaje descartado');
           }
         }
+        
+        console.log('\n═══════════════════════════════════════════════');
+        console.log('📊 [RESULTADO] Mensajes filtrados:', messagesArray.length);
+        console.log('═══════════════════════════════════════════════\n');
         
         // Ordenar por timestamp ascendente
         messagesArray.sort((a, b) => a.timestamp - b.timestamp);
         callback(messagesArray);
       } else {
+        console.log('⚠️ [listenMessages] No hay mensajes en Firebase');
         callback([]);
       }
     });
@@ -123,7 +220,7 @@ class MessageService {
   // Marcar mensaje como leído
   async markAsRead(messageId: string): Promise<boolean> {
     try {
-      const messageRef = ref(database, `messages/${messageId}`);
+      const messageRef = databaseRef(database, `messages/${messageId}`);
       await set(messageRef, {
         ...await this.getMessageById(messageId),
         isRead: true
@@ -138,7 +235,7 @@ class MessageService {
   // Obtener mensaje por ID
   async getMessageById(messageId: string): Promise<Message | null> {
     try {
-      const messageRef = ref(database, `messages/${messageId}`);
+      const messageRef = databaseRef(database, `messages/${messageId}`);
       const snapshot = await get(messageRef);
       
       if (snapshot.exists()) {
@@ -153,7 +250,7 @@ class MessageService {
 
   // Obtener últimos mensajes para mostrar en lista
   listenLastMessages(userId: string, callback: (messages: Message[]) => void) {
-    const messagesRef = ref(database, 'messages');
+    const messagesRef = databaseRef(database, 'messages');
     
     onValue(messagesRef, (snapshot) => {
       if (snapshot.exists()) {

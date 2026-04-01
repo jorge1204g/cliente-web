@@ -80,6 +80,8 @@ class OrderService {
     try {
       const orderId = Date.now().toString();
       const orderCode = `PED-${orderId.slice(-6)}`;
+      // Generar código de confirmación de 4 dígitos aleatorios
+      const confirmationCode = Math.floor(1000 + Math.random() * 9000).toString();
       
       const orderRef = ref(database, `client_orders/${orderId}`);
       await set(orderRef, {
@@ -120,7 +122,7 @@ class OrderService {
         deliveryAddress: orderData.deliveryAddress,
         customerUrl: '',
         deliveryReferences: orderData.notes || '',
-        customerCode: orderData.confirmationCode || orderCode, // Usar el código de confirmación del cliente o el orderCode
+        customerCode: orderData.confirmationCode || confirmationCode, // Usar el código de confirmación de 4 dígitos
         status: 'MANUAL_ASSIGNED', // Cambiar a MANUAL_ASSIGNED como los pedidos del restaurante
         assignedToDeliveryId: '',
         assignedToDeliveryName: '',
@@ -131,6 +133,7 @@ class OrderService {
         paymentMethod: 'CASH',
         dateTime: new Date().toISOString(),
         restaurantName: orderData.pickupName || 'Pedido del cliente', // Cambiado de "Por asignar" para mayor claridad
+        confirmationCode: confirmationCode, // Código de confirmación de 4 dígitos para el repartidor
         // NO agregar restaurantId - Este es un pedido del CLIENTE, no del restaurante
         // Los repartidores lo verán porque tiene status MANUAL_ASSIGNED y candidateDeliveryIds vacío
         // Campos adicionales para compatibilidad total con restaurante

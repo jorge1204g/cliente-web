@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 import { getAnalytics } from 'firebase/analytics';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "TU_API_KEY",
@@ -15,5 +16,6 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const database = getDatabase(app);
+export const storage = getStorage(app);
 // Analytics solo funciona en navegador (no en SSR)
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;

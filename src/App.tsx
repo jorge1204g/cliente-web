@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateOrderPage from './pages/CreateOrderPage';
 import MyOrdersPage from './pages/MyOrdersPage';
+import TrackOrderPage from './pages/TrackOrderPage';
 import ProfilePage from './pages/ProfilePage';
 import ChatPage from './pages/ChatPage';
 
@@ -20,6 +21,7 @@ const App: React.FC = () => {
           <Route path="/inicio" element={<Dashboard />} />
           <Route path="/crear-pedido" element={<CreateOrderPage />} />
           <Route path="/mis-pedidos" element={<MyOrdersPage />} />
+          <Route path="/seguimiento" element={<TrackOrderPage />} />
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="*" element={<Navigate to="/inicio" />} />

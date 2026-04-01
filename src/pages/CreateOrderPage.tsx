@@ -78,11 +78,21 @@ const CreateOrderPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 🛰️ Auto-obtener ubicación al cargar la página
+  // 🛰️ Auto-obtener ubicación al cargar la página - TOTALMENTE AUTOMÁTICO
   useEffect(() => {
-    // Solo intentar obtener ubicación si aún no se ha obtenido
-    if (deliveryLat === null && deliveryLng === null) {
-      console.log('🛰️ Solicitando ubicación automática al cargar...');
+    console.log('🛰️ [CREATE ORDER] INICIANDO PROCESO AUTOMÁTICO DE UBICACIÓN...');
+    
+    // Función para obtener ubicación con reintentos automáticos
+    const obtenerUbicacionAutomatica = (intentos: number = 0) => {
+      const MAX_INTENTOS = 3;
+      
+      if (intentos >= MAX_INTENTOS) {
+        console.warn('⚠️ [CREATE ORDER] Máximo de intentos alcanzado, usando coordenadas por defecto');
+        usarCoordenadasPorDefecto();
+        return;
+      }
+      
+      console.log(`🛰️ [CREATE ORDER] Intento ${intentos + 1} de ${MAX_INTENTOS}...`);
       
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -90,7 +100,7 @@ const CreateOrderPage: React.FC = () => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
               
-            console.log('✅ Ubicación obtenida:', `${lat}, ${lng}`);
+            console.log('✅ [CREATE ORDER] Ubicación obtenida en intento', intentos + 1, ':', `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
             
             // Guardar coordenadas en los estados
             setDeliveryLat(lat);
@@ -99,7 +109,12 @@ const CreateOrderPage: React.FC = () => {
             try {
               // Obtener dirección usando Nominatim con más detalles
               const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`,
+                {
+                  headers: {
+                    'User-Agent': 'MiAppDelivery/1.0'
+                  }
+                }
               );
               const data = await response.json();
                 
@@ -111,32 +126,66 @@ const CreateOrderPage: React.FC = () => {
               const p = data.address?.postcode || '';
               const st = data.address?.state || '';
                 
-              // Llenar campos individuales automáticamente
-              setStreet(road);
-              setHouseNumber(hNumber);
-              setSuburb(s);
-              setCity(c);
-              setState(st);
-              setPostcode(p);
-
-              console.log('✅ Dirección completada automáticamente:', road, hNumber, s, c, st, p);
+              // NO llenar campos automáticamente - El usuario lo hará manualmente
+              console.log('ℹ️ [CREATE ORDER] Dirección obtenida (NO se llena automáticamente):', { road, city: c });
+              
+              // OCULTO - Mensaje al usuario ya no se muestra (silencioso)
+              // setTimeout(() => {
+              //   alert('✅ ¡Ubicación GPS obtenida exitosamente!\n\n📍 Coordenadas: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '\n\nDirección: ' + road + ' #' + hNumber + ', ' + s + '\n' + c + ', ' + st + ' ' + p + '\n\n💡 Los campos se han llenado automáticamente.');
+              // }, 500);
             } catch (err) {
-              console.warn('⚠️ No se pudo obtener la dirección exacta, pero las coordenadas están guardadas');
+              console.warn('⚠️ [CREATE ORDER] No se pudo obtener la dirección exacta, pero las coordenadas están guardadas');
+              console.error('   Error:', err);
+              
+              // OCULTO - Mensaje informativo solo con coordenadas ya no se muestra
+              // setTimeout(() => {
+              //   alert('✅ Coordenadas GPS obtenidas: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '\n\n⚠️ No se pudo obtener la dirección exacta automáticamente.\n\n💡 La dirección se obtendrá del mapa interactivo.');
+              // }, 500);
             }
           },
           (error) => {
-            console.warn('⚠️ No se pudo obtener ubicación automática:', error.message);
-            console.log('💡 El usuario podrá obtener la ubicación manualmente con el botón');
+            console.warn('⚠️ [CREATE ORDER] Error en intento', intentos + 1, ':', error.message);
+            
+            // Reintentar automáticamente después de 2 segundos
+            setTimeout(() => {
+              obtenerUbicacionAutomatica(intentos + 1);
+            }, 2000);
           },
           {
             enableHighAccuracy: true,
-            timeout: 10000,
+            timeout: 15000,
             maximumAge: 0
           }
         );
       } else {
-        console.warn('⚠️ Geolocalización no disponible en este navegador');
+        console.warn('⚠️ [CREATE ORDER] Geolocalización no disponible en este navegador');
+        usarCoordenadasPorDefecto();
       }
+    };
+    
+    // Función para usar coordenadas por defecto (Fresnillo, Zacatecas)
+    const usarCoordenadasPorDefecto = () => {
+      const defaultLat = 24.6536;
+      const defaultLng = -102.8738;
+      
+      console.log('⚠️ [CREATE ORDER] Usando coordenadas por defecto:', defaultLat, defaultLng);
+      console.log('📍 [CREATE ORDER] El usuario deberá seleccionar su ubicación en el mapa');
+      
+      // No establecemos las coordenadas para forzar que el usuario use el mapa
+      // Opcionalmente podríamos establecerlas:
+      // setDeliveryLat(defaultLat);
+      // setDeliveryLng(defaultLng);
+      
+      setTimeout(() => {
+        alert('⚠️ No se pudo obtener tu ubicación GPS automáticamente.\n\n💡 Por favor selecciona tu ubicación en el mapa interactivo que aparece abajo.\n\nEs fácil: solo haz clic en el mapa donde estás ubicado.');
+      }, 1000);
+    };
+    
+    // Iniciar proceso automático solo si no hay coordenadas
+    if (deliveryLat === null && deliveryLng === null) {
+      obtenerUbicacionAutomatica(0);
+    } else {
+      console.log('✅ [CREATE ORDER] Ya hay coordenadas disponibles:', deliveryLat, deliveryLng);
     }
   }, []); // Solo se ejecuta una vez al montar el componente
 
@@ -455,411 +504,7 @@ const CreateOrderPage: React.FC = () => {
             </div>
           </section>
 
-          {/* Dirección de Entrega */}
-          <section style={{ marginBottom: '2rem' }}>
-            {/* <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #10b981',
-              paddingBottom: '0.5rem'
-            }}>
-              📍 Dirección de Entrega
-            </h2> */}
-          
-            {/* Botón GPS en la parte superior */}
-           <div style={{
-             padding: '1rem',
-             backgroundColor: '#eff6ff',
-             borderRadius: '0.5rem',
-             border: '1px solid #bfdbfe',
-             marginBottom: '1.5rem'
-           }}>
-             {/* Botones de ubicación en fila */}
-             <div style={{
-               display: 'flex',
-               gap: '1rem',
-               justifyContent: 'center',
-               flexWrap: 'wrap',
-               marginBottom: '1rem'
-             }}>
-               {/* 🛰️ Botón GPS - Obtener ubicación y llenar campos automáticamente */}
-               <button
-                 type="button"
-                 onClick={() => {
-                   if ('geolocation' in navigator) {
-                     setLoading(true);
-                     navigator.geolocation.getCurrentPosition(
-                       async (position) => {
-                         const lat = position.coords.latitude;
-                         const lng = position.coords.longitude;
-                          
-                         // Guardar coordenadas en los estados
-                         setDeliveryLat(lat);
-                         setDeliveryLng(lng);
-                          
-                         try {
-                           // Obtener dirección usando Nominatim con más detalles
-                           const response = await fetch(
-                             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`
-                           );
-                           const data = await response.json();
-                            
-                           // Extraer información de la dirección
-                           const road = data.address?.road || data.address?.pedestrian || '';
-                           const hNumber = data.address?.house_number || '';
-                           const s = data.address?.suburb || data.address?.neighbourhood || data.address?.quarter || '';
-                           const c = data.address?.city || data.address?.town || data.address?.village || '';
-                           const p = data.address?.postcode || '';
-                           const st = data.address?.state || '';
-                            
-                           // Llenar campos individuales automáticamente
-                           setStreet(road);
-                           setHouseNumber(hNumber);
-                           setSuburb(s);
-                           setCity(c);
-                           setState(st);
-                           setPostcode(p);
-
-                           // Actualizar el campo de coordenadas en el componente AddressSearchWithMap
-                           // Buscamos el input de coordenadas y lo llenamos automáticamente
-                           setTimeout(() => {
-                             // 1. Llenar campo combinado de coordenadas
-                             const coordsInput = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
-                             let coordsValue = '';
-                             
-                             if (coordsInput) {
-                               // Formato CON espacio y SOLO 6 DÍGITOS: "23.174295, -102.845780"
-                               const latFixed = parseFloat(lat.toString()).toFixed(6);
-                               const lngFixed = parseFloat(lng.toString()).toFixed(6);
-                               coordsValue = `${latFixed}, ${lngFixed}`;
-                               
-                               // Método 1: Asignar valor directamente
-                               coordsInput.value = coordsValue;
-                               
-                               // Método 2: Disparar múltiples eventos para asegurar que React lo detecte
-                               const events = ['input', 'change', 'keydown', 'keyup'];
-                               events.forEach(eventType => {
-                                 coordsInput.dispatchEvent(new Event(eventType, { bubbles: true }));
-                               });
-                               
-                               // Método 3: Simular entrada de teclado caracter por caracter
-                               // Esto asegura que React detecte el cambio completamente
-                               const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-                                 window.HTMLInputElement.prototype, 
-                                 "value"
-                               )?.set;
-                               if (nativeInputValueSetter) {
-                                 nativeInputValueSetter.call(coordsInput, coordsValue);
-                                 coordsInput.dispatchEvent(new Event('input', { bubbles: true }));
-                               }
-                               
-                               console.log(`✅ Coordenadas pegadas automáticamente en campo combinado: ${coordsValue}`);
-                             }
-                             
-                             // 3. Disparar evento personalizado para que React detecte el cambio
-                             setTimeout(() => {
-                               const coordsInputReal = document.querySelector('input[placeholder="Ej: 23.156, -102.345"]') as HTMLInputElement;
-                               
-                               if (coordsInputReal) {
-                                 // Disparar evento personalizado para actualizar estado de React
-                                 const customEvent = new CustomEvent('force-coordinates-update', {
-                                   detail: { value: coordsValue }
-                                 });
-                                 window.dispatchEvent(customEvent);
-                                 
-                                 console.log('🔄 Evento personalizado disparado para actualizar React');
-                                 
-                                 setTimeout(() => {
-                                   const deleteButton = document.querySelector('button[title="Eliminar último dígito"]') as HTMLButtonElement;
-                                   
-                                   if (deleteButton && coordsInputReal) {
-                                     console.log('🔍 DEBUG - Después del evento personalizado:');
-                                     console.log('   📊 Valor del campo:', coordsInputReal.value);
-                                     console.log('   🔘 Botón disabled:', deleteButton.disabled);
-                                     console.log('   🔘 Botón style.backgroundColor:', deleteButton.style.backgroundColor);
-                                     
-                                     const hasValue = coordsInputReal.value && coordsInputReal.value.length > 0;
-                                     
-                                     if (hasValue && deleteButton.disabled) {
-                                       console.error('❌ ERROR CRÍTICO: El botón sigue deshabilitado aunque React debería haber actualizado');
-                                       console.error('   Valor en input DOM:', coordsInputReal.value);
-                                       console.error('   Estado coordinatesInput en React debería ser:', coordsValue);
-                                     } else if (hasValue && !deleteButton.disabled) {
-                                       console.log('✅ ÉXITO TOTAL: React actualizó correctamente el botón!');
-                                       
-                                       // AUTO-BUSCAR después de obtener coordenadas
-                                       console.log('🔍 Iniciando búsqueda automática...');
-                                       const searchButton = document.querySelector('button[textContent*="📍 Buscar"]') as HTMLButtonElement;
-                                       if (searchButton) {
-                                         searchButton.click();
-                                         console.log('✅ Búsqueda automática iniciada!');
-                                       }
-                                     }
-                                   }
-                                 }, 100);
-                               }
-                             }, 50);
-                             
-                             // 2. Llenar campos separados de Latitud y Longitud
-                             const latitudeInput = document.querySelector('input[placeholder="Ej: 23.174257"]') as HTMLInputElement;
-                             const longitudeInput = document.querySelector('input[placeholder="Ej: -102.845951"]') as HTMLInputElement;
-                             
-                             if (latitudeInput && longitudeInput) {
-                               const latString = lat.toString();
-                               const lngString = lng.toString();
-                               
-                               // Llenar campo de Latitud
-                               latitudeInput.value = latString;
-                               const latEvents = ['input', 'change'];
-                               latEvents.forEach(eventType => {
-                                 latitudeInput.dispatchEvent(new Event(eventType, { bubbles: true }));
-                               });
-                               
-                               // Llenar campo de Longitud
-                               longitudeInput.value = lngString;
-                               const lngEvents = ['input', 'change'];
-                               lngEvents.forEach(eventType => {
-                                 longitudeInput.dispatchEvent(new Event(eventType, { bubbles: true }));
-                               });
-                               
-                               console.log(`✅ Coordenadas separadas pegadas automáticamente:`);
-                               console.log(`   🌎 Latitud: ${latString}`);
-                               console.log(`   🧭 Longitud: ${lngString}`);
-                             }
-                             
-                             console.log('💡 Ahora puedes presionar "📍 Buscar" manualmente o se buscará automáticamente');
-                           }, 300);
-
-                           // Mostrar mensaje informativo (NO la ventana modal)
-                           console.log('✅ Ubicación obtenida - Coordenadas:', `${lat}, ${lng}`);
-                         } catch (error) {
-                           console.error('Error al obtener dirección:', error);
-                           alert('⚠️ No se pudo obtener la dirección exacta\n\n📍 Coordenadas: ' + lat + ', ' + lng + '\n\nPor favor escribe tu dirección manualmente en los campos de abajo.');
-                         } finally {
-                           setLoading(false);
-                         }
-                       },
-                       (error) => {
-                         setLoading(false);
-                         console.error('Error de geolocalización:', error);
-                         alert('❌ No se pudo obtener tu ubicación\n\nAsegúrate de permitir el acceso a tu ubicación en el navegador.');
-                       },
-                       {
-                         enableHighAccuracy: true,
-                         timeout: 15000,
-                         maximumAge: 0
-                       }
-                     );
-                   } else {
-                     alert('❌ Tu navegador no soporta geolocalización');
-                   }
-                 }}
-                 disabled={loading}
-                 style={{
-                   backgroundColor: loading ? '#9ca3af' : '#10b981',
-                   color: 'white',
-                   border: 'none',
-                   padding: '0.75rem 1.5rem',
-                   borderRadius: '0.5rem',
-                   fontWeight: '600',
-                   cursor: loading ? 'not-allowed' : 'pointer',
-                   fontSize: '0.875rem',
-                   whiteSpace: 'nowrap',
-                   display: 'flex',
-                   alignItems: 'center',
-                   gap: '0.5rem',
-                   transition: 'background-color 0.2s'
-                 }}
-                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
-                 title="Obtener mi ubicación GPS y llenar los campos automáticamente"
-               >
-                 {loading ? '🛰️ Obteniendo...' : '🛰️ Mi Ubicación'}
-               </button>
-             </div>
-             <p style={{
-               fontSize: '0.75rem',
-               color: '#6b7280',
-               marginTop: '0.5rem',
-               textAlign: 'center'
-             }}>
-               💡 Presiona "🛰️ Mi Ubicación" para obtener automáticamente tu ubicación GPS con calle, número, colonia y coordenadas. Los campos se llenarán solos.
-             </p>
-           </div>
-           
-           {/* Componente de búsqueda de dirección con mapa */}
-           <AddressSearchWithMap
-             onAddressSelect={(data) => {
-               setDeliveryLat(data.lat);
-               setDeliveryLng(data.lng);
-               setStreet(data.street);
-               setHouseNumber(data.houseNumber);
-               setSuburb(data.suburb);
-               setCity(data.city);
-               setState(data.state);
-               setPostcode(data.postcode);
-             }}
-           />
-
-            {/* Campos de dirección separados */}
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
-              <div>
-                <label style={labelStyle}>🏠 Calle *</label>
-                <input
-                  type="text"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Av. Hidalgo"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🔢 Número *</label>
-                <input
-                  type="text"
-                  value={houseNumber}
-                  onChange={(e) => setHouseNumber(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. 123"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🏘️ Colonia *</label>
-                <input
-                  type="text"
-                  value={suburb}
-                  onChange={(e) => setSuburb(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Centro"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🏙️ Ciudad *</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Fresnillo"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>📍 Estado *</label>
-                <input
-                  type="text"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Zacatecas"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>📬 Código Postal *</label>
-                <input
-                  type="text"
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. 99000"
-                />
-              </div>
-            </div>
-
-            {/* Confirmación de Dirección - Mensaje Verde */}
-            {(street && houseNumber && suburb && city && state && postcode) && (
-              <div style={{
-                marginTop: '1.5rem',
-                padding: '1.25rem',
-                backgroundColor: '#d1fae5',
-                borderRadius: '0.5rem',
-                border: '2px solid #10b981',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  color: '#065f46',
-                  margin: 0,
-                  lineHeight: '1.5'
-                }}>
-                  ✅ ¡TU DIRECCIÓN ES:
-                </p>
-                <p style={{
-                  fontSize: '1rem',
-                  color: '#047857',
-                  margin: '0.75rem 0 0 0',
-                  fontWeight: '600'
-                }}>
-                  {street} #{houseNumber}, {suburb}
-                  <br />
-                  {city}, {state} {postcode}
-                </p>
-              </div>
-            )}
-
-            {/* Coordenadas GPS */}
-            {(deliveryLat !== null || deliveryLng !== null) && (
-              <div style={{
-                display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1rem',
-                padding: '1rem',
-                backgroundColor: '#eff6ff',
-                borderRadius: '0.5rem',
-                border: '1px solid #bfdbfe'
-              }}>
-                <div>
-                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                    🌎 Latitud
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryLat !== null ? deliveryLat.toString() : ''}
-                  readOnly
-                    style={{
-                      ...inputStyle,
-                      backgroundColor: '#dbeafe',
-                      border: '1px solid #93c5fd',
-                      fontWeight: '600',
-                    color: '#1e40af'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                    🧭 Longitud
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryLng !== null ? deliveryLng.toString() : ''}
-                  readOnly
-                    style={{
-                      ...inputStyle,
-                      backgroundColor: '#dbeafe',
-                      border: '1px solid #93c5fd',
-                      fontWeight: '600',
-                    color: '#1e40af'
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>
-              ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
-            </p>
-          </section>
-          
-          {/* Tipo de Servicio */}
+          {/* Tipo de Servicio - MOVIDO DESPUÉS DE DATOS DEL CLIENTE */}
           <section style={{ marginBottom: '2rem' }}>
             <h2 style={{
               fontSize: '1.25rem',
@@ -1306,6 +951,189 @@ const CreateOrderPage: React.FC = () => {
               )}
             </section>
           )}
+
+          {/* Dirección de Entrega - MOVIDA DESPUÉS DE TIPO DE SERVICIO */}
+          <section style={{ marginBottom: '2rem' }}>
+            <h2 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#1f2937',
+              marginBottom: '1rem',
+              borderBottom: '2px solid #10b981',
+              paddingBottom: '0.5rem'
+            }}>
+              📍 Dirección de Entrega
+            </h2>
+                     
+            {/* Campos de dirección separados */}
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
+              <div>
+                <label style={labelStyle}>🏠 Calle *</label>
+                <input
+                  type="text"
+                  value={street}
+                  onChange={(e) => setStreet(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej. Av. Hidalgo"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>🔢 Número *</label>
+                <input
+                  type="text"
+                  value={houseNumber}
+                  onChange={(e) => setHouseNumber(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej. 123"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>🏘️ Colonia *</label>
+                <input
+                  type="text"
+                  value={suburb}
+                  onChange={(e) => setSuburb(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej. Centro"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>🏙️ Ciudad *</label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej. Fresnillo"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>📍 Estado *</label>
+                <input
+                  type="text"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej. Zacatecas"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>📬 Código Postal *</label>
+                <input
+                  type="text"
+                  value={postcode}
+                  onChange={(e) => setPostcode(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej. 99000"
+                />
+              </div>
+            </div>
+
+            {/* Confirmación de Dirección - Mensaje Verde */}
+            {(street && houseNumber && suburb && city && state && postcode) && (
+              <div style={{
+                marginTop: '1.5rem',
+                padding: '1.25rem',
+                backgroundColor: '#d1fae5',
+                borderRadius: '0.5rem',
+                border: '2px solid #10b981',
+                textAlign: 'center'
+              }}>
+                <p style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  color: '#065f46',
+                  margin: 0,
+                  lineHeight: '1.5'
+                }}>
+                  ✅ ¡TU DIRECCIÓN ES:
+                </p>
+                <p style={{
+                  fontSize: '1rem',
+                  color: '#047857',
+                  margin: '0.75rem 0 0 0',
+                  fontWeight: '600'
+                }}>
+                  {street} #{houseNumber}, {suburb}
+                  <br />
+                  {city}, {state} {postcode}
+                </p>
+              </div>
+            )}
+
+            {/* Coordenadas GPS */}
+            {(deliveryLat !== null || deliveryLng !== null) && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1rem',
+                padding: '1rem',
+                backgroundColor: '#eff6ff',
+                borderRadius: '0.5rem',
+                border: '1px solid #bfdbfe'
+              }}>
+                <div>
+                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                    🌎 Latitud
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryLat !== null ? deliveryLat.toString() : ''}
+                    readOnly
+                    style={{
+                      ...inputStyle,
+                      backgroundColor: '#dbeafe',
+                      border: '1px solid #93c5fd',
+                      fontWeight: '600',
+                      color: '#1e40af'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                    🧭 Longitud
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryLng !== null ? deliveryLng.toString() : ''}
+                    readOnly
+                    style={{
+                      ...inputStyle,
+                      backgroundColor: '#dbeafe',
+                      border: '1px solid #93c5fd',
+                      fontWeight: '600',
+                      color: '#1e40af'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
+              ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
+            </p>
+
+            {/* Componente de búsqueda de dirección con mapa - MOVIDO AL FINAL */}
+            <AddressSearchWithMap
+              onAddressSelect={(data) => {
+                setDeliveryLat(data.lat);
+                setDeliveryLng(data.lng);
+                setStreet(data.street);
+                setHouseNumber(data.houseNumber);
+                setSuburb(data.suburb);
+                setCity(data.city);
+                setState(data.state);
+                setPostcode(data.postcode);
+              }}
+            />
+          </section>
 
           {/* OCULTO - Recogida (Opcional) */}
           {/* <section style={{ marginBottom: '2rem' }}>
