@@ -52,6 +52,9 @@ const MotorcycleServicePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [googleInstance, setGoogleInstance] = useState<any>(null); // Guardar instancia de Google
+  const [showDestinationSection, setShowDestinationSection] = useState(false); // Mostrar sección de destino
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false); // Calculando ruta
+  const [showFullForm, setShowFullForm] = useState(false); // Mostrar formulario completo
 
   // 🛰️ Auto-obtener ubicación al cargar la página - TOTALMENTE AUTOMÁTICO
   useEffect(() => {
@@ -327,6 +330,112 @@ const MotorcycleServicePage: React.FC = () => {
     return price;
   };
 
+  // 🗺️ Manejar cálculo inicial de ruta (SOLO destino -> calcula desde ubicación actual)
+  const handleCalculateRoute = async () => {
+    if (!deliveryAddressInput) {
+      alert('⚠️ Por favor escribe tu destino');
+      return;
+    }
+
+    if (!googleInstance) {
+      alert('⏳ Espere un momento mientras carga Google Maps...');
+      return;
+    }
+
+    setIsCalculatingRoute(true);
+    
+    try {
+      console.log('=== CALCULANDO RUTA DESDE UBICACIÓN ACTUAL ===');
+      console.log('Destino:', deliveryAddressInput);
+      
+      // Obtener coordenadas actuales del usuario
+      if (deliveryLat === null || deliveryLng === null) {
+        alert('⚠️ Obteniendo tu ubicación actual...');
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setDeliveryLat(position.coords.latitude);
+            setDeliveryLng(position.coords.longitude);
+            console.log('✅ Ubicación obtenida:', position.coords.latitude, position.coords.longitude);
+            // Ahora sí calcular distancia
+            calculateDistanceFromCurrentLocation(deliveryAddressInput);
+          },
+          (error) => {
+            console.error('❌ Error al obtener ubicación:', error);
+            alert('⚠️ No se pudo obtener tu ubicación. Por favor permite el acceso al GPS.');
+            setIsCalculatingRoute(false);
+          }
+        );
+      } else {
+        // Ya tenemos coordenadas, calcular directamente
+        calculateDistanceFromCurrentLocation(deliveryAddressInput);
+      }
+    } catch (err) {
+      setIsCalculatingRoute(false);
+      console.error('❌ [RUTA] Error al calcular:', err);
+      alert('❌ Error al calcular la ruta.');
+    }
+  };
+
+  // 🗺️ Calcular distancia desde ubicación actual hasta el destino
+  const calculateDistanceFromCurrentLocation = async (destination: string) => {
+    if (!googleInstance || deliveryLat === null || deliveryLng === null) {
+      console.warn('⚠️ Faltan datos para calcular');
+      return;
+    }
+
+    try {
+      const service = new googleInstance.maps.DistanceMatrixService();
+      
+      // Usar coordenadas actuales como origen
+      const origin = `${deliveryLat},${deliveryLng}`;
+      
+      console.log('Origen (coordenadas):', origin);
+      console.log('Destino:', destination);
+      
+      service.getDistanceMatrix(
+        {
+          origins: [origin],
+          destinations: [destination],
+          travelMode: googleInstance.maps.TravelMode.DRIVING,
+          unitSystem: googleInstance.maps.UnitSystem.METRIC
+        },
+        (response: any, status: string) => {
+          setIsCalculatingRoute(false);
+          console.log('Estado Distance Matrix:', status);
+          
+          if (status === 'OK' && response) {
+            const element = response.rows[0].elements[0];
+            
+            if (element.status === 'OK') {
+              const distanceMeters = element.distance?.value || 0;
+              const distanceKm = Math.round((distanceMeters / 1000) * 100) / 100;
+              setDistance(distanceKm);
+              
+              // Calcular precio automáticamente
+              const calculatedPrice = calculatePriceFromDistance(distanceKm);
+              setPrice(calculatedPrice);
+              
+              console.log('🗺️ [DISTANCIA]:', distanceKm, 'km');
+              console.log('💰 [PRECIO]: $' + calculatedPrice, 'MXN');
+              
+              // Mostrar resultado y botón de confirmar
+              setShowDestinationSection(true);
+            } else {
+              console.error('❌ [DISTANCIA] Error en elemento:', element.status);
+              alert('⚠️ No se pudo calcular la distancia. Verifica que el destino sea válido.');
+            }
+          } else {
+            console.error('❌ [DISTANCIA] Error:', status);
+            alert('⚠️ Error al calcular distancia: ' + status);
+          }
+        }
+      );
+    } catch (err) {
+      console.error('❌ [DISTANCIA] Error al calcular:', err);
+      alert('❌ Error al calcular la distancia.');
+    }
+  };
+
   // Crear pedido de motocicleta
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -475,8 +584,142 @@ const MotorcycleServicePage: React.FC = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
           
-          {/* Datos del Cliente */}
-          <section style={{ marginBottom: '2rem' }}>
+          {/* SECCIÓN 1: ¿Cuál es tu destino? - PANTALLA INICIAL */}
+          {!showDestinationSection && !showFullForm ? (
+            <section style={{ marginBottom: '2rem', textAlign: 'center' }}>
+              <div style={{
+                padding: '2rem 1rem',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '1rem',
+                border: '2px solid #10b981'
+              }}>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  color: '#047857',
+                  marginBottom: '1.5rem'
+                }}>
+                  🎯 ¿Cuál es tu destino?
+                </h2>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={labelStyle}>🏁 Dirección de Entrega:</label>
+                  <input
+                    type="text"
+                    id="delivery-autocomplete"
+                    value={deliveryAddressInput}
+                    onChange={(e) => setDeliveryAddressInput(e.target.value)}
+                    style={inputStyle}
+                    placeholder="Ej: Juana Gallo, Fresnillo, Zac."
+                    disabled={!isGoogleLoaded}
+                  />
+                  {isGoogleLoaded && (
+                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
+                      ✨ Escribe y selecciona una dirección sugerida
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCalculateRoute}
+                  disabled={!deliveryAddressInput || isCalculatingRoute}
+                  style={{
+                    width: '100%',
+                    padding: '1.25rem',
+                    backgroundColor: (!deliveryAddressInput) ? '#9ca3af' : isCalculatingRoute ? '#fbbf24' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: 'bold',
+                    fontSize: '1.25rem',
+                    cursor: (!deliveryAddressInput) ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  {isCalculatingRoute ? (
+                    <>
+                      <span>⏳</span>
+                      <span>Calculando tu ruta...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🗺️</span>
+                      <span>Calcular Ruta y Tarifa</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </section>
+          ) : !showFullForm ? (
+            /* SECCIÓN 2: Resultado del cálculo */
+            <section style={{ marginBottom: '2rem' }}>
+              <div style={{
+                padding: '2rem 1rem',
+                backgroundColor: '#d1fae5',
+                borderRadius: '1rem',
+                border: '2px solid #10b981',
+                textAlign: 'center',
+                marginBottom: '1.5rem'
+              }}>
+                <p style={{ 
+                  fontSize: '1.25rem', 
+                  fontWeight: 'bold', 
+                  color: '#065f46',
+                  margin: '0 0 1rem 0'
+                }}>
+                  ✅ ¡Ruta calculada!
+                </p>
+                
+                <div style={{ 
+                  fontSize: '2.5rem', 
+                  fontWeight: 'bold', 
+                  color: '#047857',
+                  margin: '1.5rem 0',
+                  padding: '1.5rem',
+                  backgroundColor: 'white',
+                  borderRadius: '0.75rem',
+                  border: '2px dashed #10b981'
+                }}>
+                  💰 ${price} MXN
+                </div>
+                
+                <p style={{ 
+                  fontSize: '1rem', 
+                  color: '#059669',
+                  margin: '0 0 1.5rem 0'
+                }}>
+                  🗺️ Distancia: {distance} km
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setShowFullForm(true)}
+                  style={{
+                    width: '100%',
+                    padding: '1.25rem',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: 'bold',
+                    fontSize: '1.25rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  ✅ Confirmar Pedido
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {/* SECCIÓN OCULTA: Datos del pasajero (YA LOS TENEMOS - NO MOSTRAR) */}
+          <section style={{ display: 'none', marginBottom: '2rem' }}>
             <h2 style={{
               fontSize: '1.25rem',
               fontWeight: 'bold',
@@ -514,361 +757,173 @@ const MotorcycleServicePage: React.FC = () => {
               </div>
             </div>
           </section>
-
-          {/* Información del Servicio - Motocicleta */}
-          <section style={{ marginBottom: '2rem' }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #f59e0b',
-              paddingBottom: '0.5rem'
-            }}>
-              🏍️ Detalles del Viaje
-            </h2>
-
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div>
-                <label style={labelStyle}>🚩 Dirección de Recogida:</label>
-                <input
-                  type="text"
-                  id="pickup-autocomplete"
-                  value={pickupAddress}
-                  onChange={(e) => setPickupAddress(e.target.value)}
-                  style={inputStyle}
-                  placeholder="Ej: Av. Hidalgo, Fresnillo, Zac."
-                  disabled={!isGoogleLoaded}
-                />
-                {isGoogleLoaded && (
-                  <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
-                    ✨ Escribe y selecciona una dirección sugerida
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label style={labelStyle}>🏁 Dirección de Entrega:</label>
-                <input
-                  type="text"
-                  id="delivery-autocomplete"
-                  value={deliveryAddressInput}
-                  onChange={(e) => setDeliveryAddressInput(e.target.value)}
-                  style={inputStyle}
-                  placeholder="Ej: Juana Gallo, Fresnillo, Zac."
-                  disabled={!isGoogleLoaded}
-                />
-                {isGoogleLoaded && (
-                  <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
-                    ✨ Escribe y selecciona una dirección sugerida
-                  </p>
-                )}
-              </div>
-
-              {/* BOTÓN PARA CALCULAR DISTANCIA Y PRECIO */}
-              <button
-                type="button"
-                onClick={() => calculateDistance(pickupAddress, deliveryAddressInput)}
-                disabled={!pickupAddress || !deliveryAddressInput || isCalculating}
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  backgroundColor: (!pickupAddress || !deliveryAddressInput) ? '#9ca3af' : isCalculating ? '#fbbf24' : '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.5rem',
+            <>
+              {/* Información del Servicio - Oculta pero necesaria */}
+              <section style={{ display: 'none', marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
                   fontWeight: 'bold',
-                  fontSize: '1.125rem',
-                  cursor: (!pickupAddress || !deliveryAddressInput) ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                {isCalculating ? (
-                  <>
-                    <span>⏳</span>
-                    <span>Calculando...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>🗺️</span>
-                    <span>Calcular Distancia y Precio</span>
-                  </>
-                )}
-              </button>
+                  color: '#1f2937',
+                  marginBottom: '1rem',
+                  borderBottom: '2px solid #f59e0b',
+                  paddingBottom: '0.5rem'
+                }}>
+                  🏍️ Detalles del Viaje
+                </h2>
 
-              {/* RESULTADOS DE DISTANCIA Y PRECIO */}
-              {distance !== null && price !== null && (
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div>
+                    <label style={labelStyle}>🚩 Dirección de Recogida:</label>
+                    <input
+                      type="text"
+                      id="pickup-autocomplete"
+                      value={pickupAddress}
+                      onChange={(e) => setPickupAddress(e.target.value)}
+                      style={inputStyle}
+                      placeholder="Ej: Av. Hidalgo, Fresnillo, Zac."
+                      disabled={!isGoogleLoaded}
+                    />
+                    {isGoogleLoaded && (
+                      <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
+                        ✨ Escribe y selecciona una dirección sugerida
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>📝 Instrucciones adicionales (opcional)</label>
+                    <textarea
+                      value={items}
+                      onChange={(e) => setItems(e.target.value)}
+                      style={{ ...inputStyle, minHeight: '80px' }}
+                      placeholder="Ej: Destino: Universidad Autónoma, llevar casco extra, pasar por Starbucks, etc."
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* Dirección de Entrega - Mostrando resumen */}
+              <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '1rem',
+                  borderBottom: '2px solid #10b981',
+                  paddingBottom: '0.5rem'
+                }}>
+                  📋 Resumen del Pedido
+                </h2>
+                
                 <div style={{
                   padding: '1.5rem',
-                  backgroundColor: '#d1fae5',
-                  borderRadius: '0.5rem',
-                  border: '2px solid #10b981',
-                  textAlign: 'center'
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '0.75rem',
+                  border: '1px solid #bbf7d0',
+                  marginBottom: '1rem'
                 }}>
                   <p style={{ 
-                    fontSize: '1.25rem', 
-                    fontWeight: 'bold', 
-                    color: '#065f46',
-                    margin: '0 0 0.5rem 0'
+                    fontSize: '0.875rem', 
+                    color: '#166534',
+                    margin: '0 0 1rem 0',
+                    lineHeight: '1.6'
                   }}>
-                    🗺️ Distancia: {distance} km
+                    💡 <strong>Importante:</strong> La dirección de recogida se tomará automáticamente de tu ubicación GPS actual.
                   </p>
-                  <p style={{ 
-                    fontSize: '2rem', 
-                    fontWeight: 'bold', 
-                    color: '#047857',
-                    margin: 0
-                  }}>
-                    💰 ${price} MXN
-                  </p>
-                  <p style={{ 
-                    fontSize: '0.75rem', 
-                    color: '#059669',
-                    margin: '0.5rem 0 0 0',
-                    fontStyle: 'italic'
-                  }}>
-                    ✨ Tarifa calculada automáticamente
-                  </p>
+                  
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      🚩 PUNTO DE RECOGIDA:
+                    </p>
+                    <p style={{ fontSize: '0.875rem', color: '#047857', margin: 0 }}>
+                      📍 Tu ubicación GPS actual (automática)
+                    </p>
+                    {(street && houseNumber) && (
+                      <p style={{ fontSize: '1rem', color: '#065f46', fontWeight: '600', margin: '0.5rem 0 0 0' }}>
+                        {street} #{houseNumber}, {suburb}
+                        <br />
+                        {city}, {state} {postcode}
+                      </p>
+                    )}
+                  </div>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      🏁 DESTINO:
+                    </p>
+                    <p style={{ fontSize: '1rem', color: '#065f46', fontWeight: '600', margin: 0 }}>
+                      {deliveryAddressInput}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      💰 TARIFA:
+                    </p>
+                    <p style={{ fontSize: '1.5rem', color: '#047857', fontWeight: 'bold', margin: 0 }}>
+                      ${price} MXN
+                    </p>
+                  </div>
                 </div>
-              )}
 
-              <div>
-                <label style={labelStyle}>📝 Instrucciones adicionales (opcional)</label>
-                <textarea
-                  value={items}
-                  onChange={(e) => setItems(e.target.value)}
-                  style={{ ...inputStyle, minHeight: '80px' }}
-                  placeholder="Ej. Destino: Universidad Autónoma, llevar casco extra, pasar por Starbucks, etc."
-                />
-              </div>
-
-              <div style={{
-                padding: '1rem',
-                backgroundColor: '#dbeafe',
-                borderRadius: '0.5rem',
-                border: '1px solid #93c5fd'
-              }}>
-                <p style={{ fontSize: '0.875rem', color: '#1e40af', margin: 0 }}>
-                  ℹ️ <strong>Información importante:</strong> El repartidor te recogerá en la ubicación marcada en el mapa y te llevará a tu destino de forma segura.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Dirección de Entrega (Destino del viaje) */}
-          <section style={{ marginBottom: '2rem' }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #10b981',
-              paddingBottom: '0.5rem'
-            }}>
-              🎯 Tu Ubicación Actual (Para recogerte)
-            </h2>
-                     
-            {/* Mensaje informativo - Se muestra SIEMPRE */}
-            <div style={{
-              padding: '1rem',
-              backgroundColor: '#f0fdf4',
-              borderRadius: '0.5rem',
-              border: '1px solid #bbf7d0',
-              marginBottom: '1rem'
-            }}>
-              <p style={{ 
-                fontSize: '0.875rem', 
-                color: '#166534',
-                margin: 0,
-                lineHeight: '1.6'
-              }}>
-                💡 <strong>Importante:</strong> La dirección de recogida se tomará automáticamente de tu ubicación GPS o del mapa. Si deseas especificar un punto de recogida diferente, usa el campo "🚩 Dirección de Recogida" de arriba.
-              </p>
-            </div>
-                     
-            {/* Campos de dirección separados */}
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
-              <div>
-                <label style={labelStyle}>🏠 Calle *</label>
-                <input
-                  type="text"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Av. Hidalgo"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🔢 Número *</label>
-                <input
-                  type="text"
-                  value={houseNumber}
-                  onChange={(e) => setHouseNumber(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. 123"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🏘️ Colonia *</label>
-                <input
-                  type="text"
-                  value={suburb}
-                  onChange={(e) => setSuburb(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Centro"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🏙️ Ciudad *</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Fresnillo"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>📍 Estado *</label>
-                <input
-                  type="text"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Zacatecas"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>📬 Código Postal *</label>
-                <input
-                  type="text"
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. 99000"
-                />
-              </div>
-            </div>
-
-            {/* Confirmación de Dirección - Mensaje Verde */}
-            {(street && houseNumber && suburb && city && state && postcode) && (
-              <div style={{
-                marginTop: '1.5rem',
-                padding: '1.25rem',
-                backgroundColor: '#d1fae5',
-                borderRadius: '0.5rem',
-                border: '2px solid #10b981',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  color: '#065f46',
-                  margin: 0,
-                  lineHeight: '1.5'
-                }}>
-                  ✅ TU UBICACIÓN PARA RECOGIDA ES:
-                </p>
-                <p style={{
-                  fontSize: '1rem',
-                  color: '#047857',
-                  margin: '0.75rem 0 0 0',
-                  fontWeight: '600'
-                }}>
-                  {street} #{houseNumber}, {suburb}
-                  <br />
-                  {city}, {state} {postcode}
-                </p>
-                {pickupAddress && (
-                  <p style={{
-                    fontSize: '0.875rem',
-                    color: '#059669',
-                    margin: '0.5rem 0 0 0',
-                    fontStyle: 'italic'
-                  }}>
-                    📍 Punto de referencia: {pickupAddress}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Coordenadas GPS */}
-            {(deliveryLat !== null || deliveryLng !== null) && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1rem',
-                padding: '1rem',
-                backgroundColor: '#eff6ff',
-                borderRadius: '0.5rem',
-                border: '1px solid #bfdbfe'
-              }}>
-                <div>
-                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                    🌎 Latitud
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryLat !== null ? deliveryLat.toString() : ''}
-                    readOnly
-                    style={{
-                      ...inputStyle,
-                      backgroundColor: '#dbeafe',
-                      border: '1px solid #93c5fd',
-                      fontWeight: '600',
-                      color: '#1e40af'
-                    }}
-                  />
+                {/* Coordenadas GPS - Ocultas pero necesarias */}
+                <div style={{ display: 'none' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                    <div>
+                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>🌎 Latitud</label>
+                      <input
+                        type="text"
+                        value={deliveryLat !== null ? deliveryLat.toString() : ''}
+                        readOnly
+                        style={{
+                          ...inputStyle,
+                          backgroundColor: '#dbeafe',
+                          border: '1px solid #93c5fd',
+                          fontWeight: '600',
+                          color: '#1e40af'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>🧭 Longitud</label>
+                      <input
+                        type="text"
+                        value={deliveryLng !== null ? deliveryLng.toString() : ''}
+                        readOnly
+                        style={{
+                          ...inputStyle,
+                          backgroundColor: '#dbeafe',
+                          border: '1px solid #93c5fd',
+                          fontWeight: '600',
+                          color: '#1e40af'
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                    🧭 Longitud
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryLng !== null ? deliveryLng.toString() : ''}
-                    readOnly
-                    style={{
-                      ...inputStyle,
-                      backgroundColor: '#dbeafe',
-                      border: '1px solid #93c5fd',
-                      fontWeight: '600',
-                      color: '#1e40af'
-                    }}
-                  />
-                </div>
-              </div>
-            )}
 
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
-              ℹ️ Las coordenadas se obtendrán automáticamente al crear la solicitud
-            </p>
-
-            {/* Componente de búsqueda de dirección con mapa */}
-            <AddressSearchWithMap
-              onAddressSelect={(data) => {
-                setDeliveryLat(data.lat);
-                setDeliveryLng(data.lng);
-                setStreet(data.street);
-                setHouseNumber(data.houseNumber);
-                setSuburb(data.suburb);
-                setCity(data.city);
-                setState(data.state);
-                setPostcode(data.postcode);
-              }}
-            />
-          </section>
+                {/* Botón Submit */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '1.25rem',
+                    backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: 'bold',
+                    fontSize: '1.25rem',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  {loading ? '⏳ Creando Pedido...' : '🏍️ Confirmar y Solicitar Viaje'}
+                </button>
+              </section>
+            </>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -883,26 +938,6 @@ const MotorcycleServicePage: React.FC = () => {
               {error}
             </div>
           )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '1rem',
-              backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              fontWeight: 'bold',
-              fontSize: '1.125rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}
-          >
-            {loading ? '⏳ Solicitando Viaje...' : '🏍️ Solicitar Viaje Ahora'}
-          </button>
         </div>
       </form>
     </div>
