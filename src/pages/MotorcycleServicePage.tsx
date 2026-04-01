@@ -51,6 +51,7 @@ const MotorcycleServicePage: React.FC = () => {
   // Estados
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [googleInstance, setGoogleInstance] = useState<any>(null); // Guardar instancia de Google
 
   // 🛰️ Auto-obtener ubicación al cargar la página - TOTALMENTE AUTOMÁTICO
   useEffect(() => {
@@ -170,6 +171,7 @@ const MotorcycleServicePage: React.FC = () => {
         const google = await loader.load();
         setIsGoogleLoaded(true);
         googleLoadedRef.current = true;
+        setGoogleInstance(google); // Guardar instancia para usar después
         console.log('✅ [GOOGLE MAPS] API cargada correctamente (UNA SOLA VEZ)');
         
         // Configurar autocompletado para recogida (USANDO API CLÁSICA QUE FUNCIONA)
@@ -226,35 +228,42 @@ const MotorcycleServicePage: React.FC = () => {
     loadGoogleMaps();
   }, []); // Dependencia vacía = solo se ejecuta UNA VEZ
 
-  // 🗺️ Calcular distancia entre dos direcciones
+  // 🗺️ Calcular distancia entre dos direcciones (USANDO INSTANCIA YA CARGADA)
   const calculateDistance = async (origin: string, destination: string) => {
     if (!origin || !destination) {
       console.warn('⚠️ [DISTANCIA] Faltan direcciones para calcular');
       return;
     }
 
+    // Verificar si Google Maps ya está cargado
+    if (!googleInstance) {
+      console.warn('⚠️ [DISTANCIA] Google Maps no está cargado aún');
+      alert('⏳ Espere un momento mientras carga Google Maps...');
+      return;
+    }
+
     setIsCalculating(true);
     
     try {
-      const { Loader } = await import('@googlemaps/js-api-loader');
-      const loader = new Loader({
-        apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-        version: 'weekly',
-        libraries: ['places', 'geometry']
-      });
+      console.log('=== CALCULANDO DISTANCIA ===');
+      console.log('Recogida:', origin);
+      console.log('Entrega:', destination);
       
-      const google = await loader.load();
-      const service = new google.maps.DistanceMatrixService();
+      // USAR la instancia ya cargada - NO crear nuevo Loader
+      const service = new googleInstance.maps.DistanceMatrixService();
       
       service.getDistanceMatrix(
         {
           origins: [origin],
           destinations: [destination],
-          travelMode: google.maps.TravelMode.DRIVING,
-          unitSystem: google.maps.UnitSystem.METRIC
+          travelMode: googleInstance.maps.TravelMode.DRIVING,
+          unitSystem: googleInstance.maps.UnitSystem.METRIC
         },
-        (response, status) => {
+        (response: any, status: string) => {
           setIsCalculating(false);
+          console.log('Estado Distance Matrix:', status);
+          console.log('Response:', response);
+          
           if (status === 'OK' && response) {
             const element = response.rows[0].elements[0];
             
