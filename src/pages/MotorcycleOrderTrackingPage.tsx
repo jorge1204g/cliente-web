@@ -5,34 +5,38 @@ import OrderService, { ClientOrder } from '../services/OrderService';
 
 // Componente de Timeline para el estado del pedido (especial para motocicleta)
 const MotorcycleOrderTimeline: React.FC<{ status: string }> = ({ status }) => {
-  // Estados personalizados para servicio de motocicleta
+  // Estados SIMPLIFICADOS para servicio de motocicleta (tipo taxi/pasajero)
   const statusSteps = [
-    { key: 'pending', label: '⏳ Pendiente - Buscando repartidor', icon: '⏳' },
-    { key: 'accepted', label: '✅ Aceptado - Repartidor asignado', icon: '✅' },
-    {
-      key: 'on_the_way_to_pickup',
-      label: '🏍️ En camino a tu ubicación',
-      icon: '🏍️'
+    { key: 'pending', label: 'Buscando repartidor', icon: '⏳' },
+    { key: 'accepted', label: 'Repartidor asignado', icon: '✅' },
+    { 
+      key: 'on_the_way_to_pickup', 
+      label: 'En camino por ti', 
+      icon: '🏍️',
+      description: 'El repartidor se dirige a tu ubicación'
     },
-    {
-      key: 'arrived_at_pickup',
-      label: '📍 Repartidor llegó a tu ubicación',
-      icon: '📍'
+    { 
+      key: 'arrived_at_pickup', 
+      label: 'Repartidor llegó', 
+      icon: '📍',
+      description: 'Tu repartidor ha llegado, sube a la motocicleta'
     },
-    {
-      key: 'on_the_way_to_destination',
-      label: '🛣️ En camino al destino',
-      icon: '🛣️'
+    { 
+      key: 'on_the_way_to_destination', 
+      label: 'En camino al destino', 
+      icon: '🛣️',
+      description: 'Viajando de forma segura hacia tu destino'
     },
-    {
-      key: 'delivered',
-      label: '🎯 ¡Llegaste a tu destino!',
-      icon: '🎯'
+    { 
+      key: 'delivered', 
+      label: '¡Viaje completado!', 
+      icon: '🎯',
+      description: 'Has llegado a tu destino'
     },
-    { key: 'cancelled', label: '❌ Cancelado', icon: '❌' }
+    { key: 'cancelled', label: 'Cancelado', icon: '❌' }
   ];
 
-  // Normalizar el estado
+  // Normalizar el estado (simplificado)
   const normalizeStatus = (status: string): string => {
     const statusMap: { [key: string]: string } = {
       'PENDING': 'pending',
@@ -60,7 +64,7 @@ const MotorcycleOrderTimeline: React.FC<{ status: string }> = ({ status }) => {
         textAlign: 'center'
       }}>
         <p style={{ color: '#991b1b', fontWeight: 'bold', fontSize: '1rem' }}>
-          ❌ Viaje Cancelado
+          {statusSteps.find(s => s.key === 'cancelled')?.icon} Viaje Cancelado
         </p>
       </div>
     );
@@ -95,7 +99,7 @@ const MotorcycleOrderTimeline: React.FC<{ status: string }> = ({ status }) => {
         marginBottom: '1rem',
         textAlign: 'center'
       }}>
-        📍 Estado de tu Viaje
+        Estado de tu Viaje
       </h3>
       
       <div style={{ position: 'relative', paddingLeft: '2rem' }}>
@@ -174,6 +178,7 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [orderDeleted, setOrderDeleted] = useState(false);
 
   // Escuchar cambios en tiempo real del pedido
   useEffect(() => {
@@ -187,7 +192,16 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
 
     const unsubscribe = OrderService.observeOrder(orderId, (updatedOrder) => {
       console.log('🔄 [TRACKING] Pedido actualizado:', updatedOrder);
-      setOrder(updatedOrder);
+      if (updatedOrder) {
+        console.log('📍 pickupAddress:', updatedOrder.pickupAddress);
+        console.log('🏁 deliveryAddress:', updatedOrder.deliveryAddress);
+        console.log('🏠 clientAddress:', updatedOrder.clientAddress);
+        setOrder(updatedOrder);
+      } else {
+        // El pedido NO existe en Firebase (fue eliminado)
+        console.warn('⚠️ [TRACKING] El pedido no existe en Firebase - probablemente fue eliminado');
+        setOrderDeleted(true);
+      }
       setLoading(false);
     });
 
@@ -221,23 +235,36 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
   const getStatusMessage = () => {
     if (!order) return '';
     
+    // Mapeo de emojis por estado
+    const emojiMap: { [key: string]: string } = {
+      'PENDING': '⏳',
+      'ACCEPTED': '✅',
+      'ON_THE_WAY_TO_PICKUP': '🏍️',
+      'ARRIVED_AT_PICKUP': '📍',
+      'ON_THE_WAY_TO_DESTINATION': '🛣️',
+      'DELIVERED': '🎯',
+      'CANCELLED': '❌'
+    };
+    
+    const emoji = emojiMap[order.status?.toUpperCase()] || '📊';
+    
     switch (order.status?.toUpperCase()) {
       case 'PENDING':
-        return '🔍 Buscando un repartidor cercano...';
+        return `${emoji} Buscando un repartidor cercano...`;
       case 'ACCEPTED':
-        return '✅ ¡Repartidor asignado! Se dirige a tu ubicación.';
+        return `${emoji} ¡Repartidor asignado! Se dirige a tu ubicación.`;
       case 'ON_THE_WAY_TO_PICKUP':
-        return '🏍️ Tu repartidor va en camino a recogerte.';
+        return `${emoji} Tu repartidor va en camino a recogerte.`;
       case 'ARRIVED_AT_PICKUP':
-        return '📍 ¡Tu repartidor ha llegado! Sube a la motocicleta.';
+        return `${emoji} ¡Tu repartidor ha llegado! Sube a la motocicleta.`;
       case 'ON_THE_WAY_TO_DESTINATION':
-        return '🛣️ Viajando hacia tu destino de forma segura.';
+        return `${emoji} Viajando hacia tu destino de forma segura.`;
       case 'DELIVERED':
-        return '🎯 ¡Has llegado a tu destino! Gracias por usar nuestro servicio.';
+        return `${emoji} ¡Has llegado a tu destino! Gracias por usar nuestro servicio.`;
       case 'CANCELLED':
-        return '❌ El viaje ha sido cancelado.';
+        return `${emoji} El viaje ha sido cancelado.`;
       default:
-        return '📊 Procesando tu solicitud...';
+        return `${emoji} Procesando tu solicitud...`;
     }
   };
 
@@ -252,7 +279,7 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
         justifyContent: 'center'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏍️</div>
           <p style={{ fontSize: '1.125rem', color: '#1f2937' }}>Cargando información del viaje...</p>
         </div>
       </div>
@@ -276,11 +303,15 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
           boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❌</div>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
           <h2 style={{ fontSize: '1.5rem', color: '#dc2626', marginBottom: '1rem' }}>
-            Error al cargar el viaje
+            {orderDeleted ? 'Pedido Eliminado' : 'Error al cargar el viaje'}
           </h2>
-          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>{error || 'Pedido no encontrado'}</p>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+            {orderDeleted 
+              ? 'Este pedido ha sido eliminado por el administrador y ya no está disponible.'
+              : (error || 'Pedido no encontrado')}
+          </p>
           <button
             onClick={() => navigate('/mis-pedidos')}
             style={{
@@ -332,7 +363,7 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
           ← Regresar
         </button>
         <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-          🏍️ Seguimiento de tu Viaje
+          Seguimiento de tu Viaje
         </h1>
       </header>
 
@@ -368,7 +399,7 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
               {getStatusMessage()}
             </h2>
             <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.9)', marginTop: '0.5rem' }}>
-              ⏱️ Tiempo transcurrido: {formatTime(timeElapsed)}
+              Tiempo transcurrido: {formatTime(timeElapsed)}
             </p>
           </div>
 
@@ -390,18 +421,18 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
               marginBottom: '1rem'
             }}>
               <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
-                🆔 Número de pedido: <strong>#{orderId?.slice(-6).toUpperCase()}</strong>
+                Número de pedido: <strong>#{orderId?.slice(-6).toUpperCase()}</strong>
               </p>
               <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
-                💰 Tarifa: <strong>${order.notes?.match(/\$(\d+)/)?.[1] || 'N/A'} MXN</strong>
+                Tarifa: <strong>${order.notes?.match(/\$(\d+)/)?.[1] || 'N/A'} MXN</strong>
               </p>
               {order.distance && (
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
-                  🗺️ Distancia: <strong>{order.distance} km</strong>
+                  Distancia: <strong>{order.distance} km</strong>
                 </p>
               )}
               <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0' }}>
-                📅 Fecha: <strong>{new Date(order.createdAt!).toLocaleString()}</strong>
+                Fecha: <strong>{new Date(order.createdAt!).toLocaleString()}</strong>
               </p>
             </div>
 
@@ -410,23 +441,50 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
               borderTop: '1px solid #e5e7eb',
               paddingTop: '1rem'
             }}>
+              {/* Punto de Partida - Priorizar pickupAddress sobre clientAddress */}
               <div style={{ marginBottom: '1rem' }}>
                 <p style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                  🚩 Punto de Partida:
+                  Punto de Partida:
                 </p>
                 <p style={{ fontSize: '0.875rem', color: '#1f2937', margin: 0 }}>
-                  📍 {order.clientAddress || 'Ubicación actual'}
+                  {order.pickupAddress || order.clientAddress || 'Ubicación actual'}
                 </p>
+                {order.pickupAddress && order.clientAddress && order.pickupAddress !== order.clientAddress && (
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    (clientAddress: {order.clientAddress})
+                  </p>
+                )}
               </div>
 
+              {/* Destino - Usar deliveryAddress, con fallback a items si está vacío */}
               <div style={{ marginBottom: '1rem' }}>
                 <p style={{ fontSize: '0.875rem', color: '#dc2626', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                  🏁 Destino:
+                  Destino:
                 </p>
                 <p style={{ fontSize: '0.875rem', color: '#1f2937', margin: 0 }}>
-                  📍 {order.deliveryAddress || order.items || 'Por definir'}
+                  {order.deliveryAddress || 'Por definir'}
                 </p>
+                {!order.deliveryAddress && order.items && (
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    Información alternativa: {order.items}
+                  </p>
+                )}
               </div>
+              
+              {/* Debug: Mostrar todos los campos de dirección si están disponibles */}
+              {(order.pickupAddress || order.deliveryAddress) && (
+                <details style={{ marginTop: '1rem', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '0.25rem' }}>
+                  <summary style={{ fontSize: '0.75rem', color: '#6b7280', cursor: 'pointer' }}>
+                    Ver detalles técnicos (debug)
+                  </summary>
+                  <div style={{ fontSize: '0.75rem', color: '#4b5563', marginTop: '0.5rem' }}>
+                    <p style={{ margin: '0.25rem 0' }}>pickupAddress: {order.pickupAddress || 'No disponible'}</p>
+                    <p style={{ margin: '0.25rem 0' }}>deliveryAddress: {order.deliveryAddress || 'No disponible'}</p>
+                    <p style={{ margin: '0.25rem 0' }}>clientAddress: {order.clientAddress || 'No disponible'}</p>
+                    <p style={{ margin: '0.25rem 0' }}>items: {order.items || 'No disponible'}</p>
+                  </div>
+                </details>
+              )}
             </div>
           </div>
 
@@ -448,14 +506,14 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
                 color: '#1e40af',
                 marginBottom: '0.5rem'
               }}>
-                🏍️ Tu Repartidor
+                Tu Repartidor
               </h3>
               <p style={{ fontSize: '0.875rem', color: '#1e40af', margin: '0.25rem 0' }}>
-                👤 Nombre: <strong>{order.riderName}</strong>
+                Nombre: <strong>{order.riderName}</strong>
               </p>
               {order.riderPhone && (
                 <p style={{ fontSize: '0.875rem', color: '#1e40af', margin: '0.25rem 0' }}>
-                  📞 Teléfono: <strong>{order.riderPhone}</strong>
+                  Teléfono: <strong>{order.riderPhone}</strong>
                 </p>
               )}
             </div>
@@ -486,7 +544,7 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
                 gap: '0.5rem'
               }}
             >
-              📞 Contactar Repartidor
+              Contactar Repartidor
             </button>
             <button
               onClick={() => handleCancelOrder(orderId!)}
@@ -505,7 +563,7 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
                 gap: '0.5rem'
               }}
             >
-              ❌ Cancelar Viaje
+              Cancelar Viaje
             </button>
           </div>
         )}

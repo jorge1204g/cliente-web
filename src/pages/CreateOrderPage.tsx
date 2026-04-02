@@ -88,7 +88,7 @@ const CreateOrderPage: React.FC = () => {
       
       if (intentos >= MAX_INTENTOS) {
         console.warn('⚠️ [CREATE ORDER] Máximo de intentos alcanzado, usando coordenadas por defecto');
-        usarCoordenadasPorDefecto();
+        console.log('ℹ️ [INFO] El usuario deberá seleccionar su ubicación manualmente en el mapa');
         return;
       }
       
@@ -129,24 +129,24 @@ const CreateOrderPage: React.FC = () => {
               // NO llenar campos automáticamente - El usuario lo hará manualmente
               console.log('ℹ️ [CREATE ORDER] Dirección obtenida (NO se llena automáticamente):', { road, city: c });
               
-              // OCULTO - Mensaje al usuario ya no se muestra (silencioso)
-              // setTimeout(() => {
-              //   alert('✅ ¡Ubicación GPS obtenida exitosamente!\n\n📍 Coordenadas: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '\n\nDirección: ' + road + ' #' + hNumber + ', ' + s + '\n' + c + ', ' + st + ' ' + p + '\n\n💡 Los campos se han llenado automáticamente.');
-              // }, 500);
             } catch (err) {
               console.warn('⚠️ [CREATE ORDER] No se pudo obtener la dirección exacta, pero las coordenadas están guardadas');
               console.error('   Error:', err);
-              
-              // OCULTO - Mensaje informativo solo con coordenadas ya no se muestra
-              // setTimeout(() => {
-              //   alert('✅ Coordenadas GPS obtenidas: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '\n\n⚠️ No se pudo obtener la dirección exacta automáticamente.\n\n💡 La dirección se obtendrá del mapa interactivo.');
-              // }, 500);
             }
           },
           (error) => {
             console.warn('⚠️ [CREATE ORDER] Error en intento', intentos + 1, ':', error.message);
             
-            // Reintentar automáticamente después de 2 segundos
+            // Manejar diferentes tipos de error
+            if (error.code === 1) {
+              console.log('ℹ️ [CREATE ORDER] Usuario denegó el permiso de ubicación');
+              console.log('💡 [INFO] El usuario debe permitir el acceso a la ubicación en su navegador');
+              // NO reintentar si el usuario denegó explícitamente
+              usarCoordenadasPorDefecto();
+              return;
+            }
+            
+            // Reintentar automáticamente después de 2 segundos para otros errores
             setTimeout(() => {
               obtenerUbicacionAutomatica(intentos + 1);
             }, 2000);

@@ -66,7 +66,7 @@ const MotorcycleServicePage: React.FC = () => {
       
       if (intentos >= MAX_INTENTOS) {
         console.warn('⚠️ [MOTORCYCLE] Máximo de intentos alcanzado, usando coordenadas por defecto');
-        usarCoordenadasPorDefecto();
+        console.log('ℹ️ [INFO] El usuario deberá seleccionar su ubicación manualmente en el mapa');
         return;
       }
       
@@ -121,7 +121,16 @@ const MotorcycleServicePage: React.FC = () => {
           (error) => {
             console.warn('⚠️ [MOTORCYCLE] Error en intento', intentos + 1, ':', error.message);
             
-            // Reintentar automáticamente después de 2 segundos
+            // Manejar diferentes tipos de error
+            if (error.code === 1) {
+              console.log('ℹ️ [MOTORCYCLE] Usuario denegó el permiso de ubicación');
+              console.log('💡 [INFO] El usuario debe permitir el acceso a la ubicación en su navegador');
+              // NO reintentar si el usuario denegó explícitamente
+              usarCoordenadasPorDefecto();
+              return;
+            }
+            
+            // Reintentar automáticamente después de 2 segundos para otros errores
             setTimeout(() => {
               obtenerUbicacionAutomatica(intentos + 1);
             }, 2000);
@@ -145,6 +154,11 @@ const MotorcycleServicePage: React.FC = () => {
       
       console.log('⚠️ [MOTORCYCLE] Usando coordenadas por defecto:', defaultLat, defaultLng);
       console.log('📍 [MOTORCYCLE] El usuario deberá seleccionar su ubicación en el mapa');
+      
+      // No establecemos las coordenadas para forzar que el usuario use el mapa
+      // Opcionalmente podríamos establecerlas:
+      // setDeliveryLat(defaultLat);
+      // setDeliveryLng(defaultLng);
       
       setTimeout(() => {
         alert('⚠️ No se pudo obtener tu ubicación GPS automáticamente.\n\n💡 Por favor selecciona tu ubicación en el mapa interactivo que aparece abajo.\n\nEs fácil: solo haz clic en el mapa donde estás ubicado.');
@@ -535,8 +549,8 @@ const MotorcycleServicePage: React.FC = () => {
         clientId,
         clientName,
         clientPhone,
-        // Construir dirección completa con todos los campos
-        clientAddress: `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
+        // Dirección de recogida (punto de partida)
+        clientAddress: pickupAddress || 'Ubicación actual',
         clientLocation: {
           latitude: lat,
           longitude: lng
@@ -544,19 +558,16 @@ const MotorcycleServicePage: React.FC = () => {
         serviceType: 'MOTORCYCLE_TAXI',
         status: 'PENDING',
         createdAt: Date.now(),
-        // Dirección de recogida (si aplica) - USANDO AUTOCOMPLETADO
-        ...(pickupAddress && {
-          pickupAddress: pickupAddress,
-          items: `Recoger en: ${pickupAddress}\n${items}`
-        }),
-        // Construir dirección de entrega con todos los campos
-        deliveryAddress: `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
+        // Dirección de recogida explícita
+        pickupAddress: pickupAddress || 'Ubicación actual',
+        // Dirección de entrega (destino final)
+        deliveryAddress: deliveryAddressInput || 'Por definir',
         deliveryLocation: {
-          latitude: lat,
-          longitude: lng
+          latitude: deliveryLat !== null ? deliveryLat : defaultLat,
+          longitude: deliveryLng !== null ? deliveryLng : defaultLng
         },
         // Descripción del viaje
-        items: items || 'Viaje en motocicleta',
+        items: `De: ${pickupAddress || 'Ubicación actual'}\nA: ${deliveryAddressInput || 'Por definir'}`,
         // Distancia y precio calculados
         distance: distance ?? undefined,
         // Notas adicionales con precio
@@ -864,7 +875,7 @@ const MotorcycleServicePage: React.FC = () => {
                 </div>
               </section>
 
-              {/* Dirección de Entrega - Mostrando resumen */}
+              {/* Dirección de Entrega */}
               <section style={{ marginBottom: '2rem' }}>
                 <h2 style={{
                   fontSize: '1.25rem',
@@ -877,6 +888,130 @@ const MotorcycleServicePage: React.FC = () => {
                   📋 Resumen del Pedido
                 </h2>
                 
+                {/* Campos de dirección - OCULTOS PERO FUNCIONALES (SOLO para autocompletado) */}
+                <div style={{ display: 'none' }}>
+                  <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
+                    <div>
+                      <label style={labelStyle}>🏠 Calle *</label>
+                      <input
+                        type="text"
+                        value={street}
+                        onChange={(e) => setStreet(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. Av. Hidalgo"
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🔢 Número *</label>
+                      <input
+                        type="text"
+                        value={houseNumber}
+                        onChange={(e) => setHouseNumber(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. 123"
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🏘️ Colonia *</label>
+                      <input
+                        type="text"
+                        value={suburb}
+                        onChange={(e) => setSuburb(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. Centro"
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🏙️ Ciudad *</label>
+                      <input
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. Fresnillo"
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>📍 Estado *</label>
+                      <input
+                        type="text"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. Zacatecas"
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>📬 Código Postal *</label>
+                      <input
+                        type="text"
+                        value={postcode}
+                        onChange={(e) => setPostcode(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. 99000"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coordenadas GPS - OCULTAS PERO FUNCIONALES */}
+                {(deliveryLat !== null || deliveryLng !== null) && (
+                  <div style={{ display: 'none' }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '1rem',
+                      marginBottom: '1rem',
+                      padding: '1rem',
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #bfdbfe'
+                    }}>
+                      <div>
+                        <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                          🌎 Latitud
+                        </label>
+                        <input
+                          type="text"
+                          value={deliveryLat !== null ? deliveryLat.toString() : ''}
+                          readOnly
+                          style={{
+                            ...inputStyle,
+                            backgroundColor: '#dbeafe',
+                            border: '1px solid #93c5fd',
+                            fontWeight: '600',
+                            color: '#1e40af'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                          🧭 Longitud
+                        </label>
+                        <input
+                          type="text"
+                          value={deliveryLng !== null ? deliveryLng.toString() : ''}
+                          readOnly
+                          style={{
+                            ...inputStyle,
+                            backgroundColor: '#dbeafe',
+                            border: '1px solid #93c5fd',
+                            fontWeight: '600',
+                            color: '#1e40af'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Resumen visible - IGUAL QUE ANTES */}
                 <div style={{
                   padding: '1.5rem',
                   backgroundColor: '#f0fdf4',
@@ -895,12 +1030,13 @@ const MotorcycleServicePage: React.FC = () => {
                   
                   <div style={{ marginBottom: '1rem' }}>
                     <p style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      🚩 PUNTO DE RECOGIDA:
+                      🚩 Punto de Partida:
                     </p>
                     <p style={{ fontSize: '0.875rem', color: '#047857', margin: 0 }}>
-                      📍 Tu ubicación GPS actual (automática)
+                      📍 Ubicación actual
                     </p>
-                    {(street && houseNumber) && (
+                    {/* Mostrar dirección completa si está disponible */}
+                    {(street && houseNumber && city) && (
                       <p style={{ fontSize: '1rem', color: '#065f46', fontWeight: '600', margin: '0.5rem 0 0 0' }}>
                         {street} #{houseNumber}, {suburb}
                         <br />
@@ -928,40 +1064,20 @@ const MotorcycleServicePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Coordenadas GPS - Ocultas pero necesarias */}
+                {/* Componente de búsqueda de dirección con mapa - OCULTO PERO FUNCIONAL */}
                 <div style={{ display: 'none' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>🌎 Latitud</label>
-                      <input
-                        type="text"
-                        value={deliveryLat !== null ? deliveryLat.toString() : ''}
-                        readOnly
-                        style={{
-                          ...inputStyle,
-                          backgroundColor: '#dbeafe',
-                          border: '1px solid #93c5fd',
-                          fontWeight: '600',
-                          color: '#1e40af'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>🧭 Longitud</label>
-                      <input
-                        type="text"
-                        value={deliveryLng !== null ? deliveryLng.toString() : ''}
-                        readOnly
-                        style={{
-                          ...inputStyle,
-                          backgroundColor: '#dbeafe',
-                          border: '1px solid #93c5fd',
-                          fontWeight: '600',
-                          color: '#1e40af'
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <AddressSearchWithMap
+                    onAddressSelect={(data) => {
+                      setDeliveryLat(data.lat);
+                      setDeliveryLng(data.lng);
+                      setStreet(data.street);
+                      setHouseNumber(data.houseNumber);
+                      setSuburb(data.suburb);
+                      setCity(data.city);
+                      setState(data.state);
+                      setPostcode(data.postcode);
+                    }}
+                  />
                 </div>
 
                 {/* Botón Submit */}

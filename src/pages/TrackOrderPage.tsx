@@ -115,20 +115,37 @@ const TrackOrderPage: React.FC = () => {
                   
                 } catch (error: any) {
                   console.error('❌ [FIREBASE] Error al guardar coordenadas:', error.message);
+                  // NO mostrar error al usuario - Es solo informativo
                 }
               }
             },
             (error) => {
               console.warn('⚠️ [PERMISOS] Usuario denegó el permiso:', error.code, error.message);
+              
+              let mensajeError = '';
               if (error.code === 1) {
                 console.log('ℹ️ [INFO] El usuario bloqueó el permiso. Puedes cambiar esta decisión en la configuración del navegador');
+                mensajeError = 'Has bloqueado el acceso a la ubicación. Si quieres ver el mapa con tu repartidor, permite el acceso a la ubicación en la configuración de tu navegador.';
+              } else if (error.code === 2) {
+                console.log('ℹ️ [INFO] Posición no disponible');
+                mensajeError = 'No se pudo obtener tu ubicación. Verifica que el GPS esté activado.';
+              } else if (error.code === 3) {
+                console.log('ℹ️ [INFO] Tiempo de espera agotado');
+                mensajeError = 'Se agotó el tiempo para obtener tu ubicación. Recarga la página para intentar de nuevo.';
+              } else {
+                console.log('ℹ️ [INFO] Error desconocido');
+                mensajeError = 'No se pudo obtener tu ubicación.';
               }
+              
+              // Mostrar mensaje informativo al usuario (NO como error crítico)
+              console.log('📱 Mostrando mensaje al usuario:', mensajeError);
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
           );
           
         } catch (err: any) {
           console.error('❌ [ERROR] Error al solicitar permiso:', err.message);
+          // NO lanzar error - Solo loguear para diagnóstico
         }
       } else {
         console.warn('⚠️ [COMPATIBILIDAD] Geolocalización no soportada en este navegador');
