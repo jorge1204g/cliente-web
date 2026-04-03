@@ -499,23 +499,29 @@ const MotorcycleServicePage: React.FC = () => {
     console.log('   state:', state);
     console.log('   postcode:', postcode);
 
-    // Validar campos obligatorios de dirección (con valores por defecto si faltan)
-    if (!street) {
-      setError('⚠️ No se pudo obtener la calle. Intenta nuevamente.');
-      return;
+    // Validar campos obligatorios de dirección (IGUAL QUE CREATE ORDER PAGE)
+    if (!street || !houseNumber || !suburb || !city || !state || !postcode) {
+      console.warn('⚠️ [VALIDACIÓN] Faltan campos de dirección, usando valores por defecto...');
+      
+      // Usar valores por defecto si algunos campos están vacíos (IGUAL QUE CREATE ORDER PAGE)
+      if (!street) setStreet('Calle Principal');
+      if (!houseNumber) setHouseNumber('S/N');
+      if (!suburb) setSuburb('Centro');
+      if (!city) setCity('Fresnillo');
+      if (!state) setState('Zacatecas');
+      if (!postcode) setPostcode('99010');
+      
+      console.log('✅ [VALIDACIÓN] Campos completados con valores por defecto:', { 
+        street: street || 'Calle Principal', 
+        houseNumber: houseNumber || 'S/N', 
+        suburb: suburb || 'Centro', 
+        city: city || 'Fresnillo', 
+        state: state || 'Zacatecas', 
+        postcode: postcode || '99010' 
+      });
+    } else {
+      console.log('✅ [VALIDACIÓN] Todos los campos de dirección están completos');
     }
-    
-    // Usar valores por defecto si algunos campos están vacíos
-    if (!houseNumber) setHouseNumber('S/N');
-    if (!suburb) setSuburb('Centro');
-    if (!city) {
-      setError('⚠️ No se pudo obtener la ciudad. Intenta nuevamente.');
-      return;
-    }
-    if (!state) setState('Zacatecas');
-    if (!postcode) setPostcode('99010');
-
-    console.log('✅ [VALIDACIÓN] Campos después de ajustes:', { street, houseNumber, suburb, city, state, postcode });
 
     // Validar coordenadas obligatorias
     if (deliveryLat === null || deliveryLng === null) {
@@ -549,8 +555,8 @@ const MotorcycleServicePage: React.FC = () => {
         clientId,
         clientName,
         clientPhone,
-        // Dirección de recogida (punto de partida)
-        clientAddress: pickupAddress || 'Ubicación actual',
+        // Construir dirección completa con todos los campos (IGUAL QUE CREATE ORDER PAGE)
+        clientAddress: `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
         clientLocation: {
           latitude: lat,
           longitude: lng
@@ -558,18 +564,17 @@ const MotorcycleServicePage: React.FC = () => {
         serviceType: 'MOTORCYCLE_TAXI',
         status: 'PENDING',
         createdAt: Date.now(),
-        // Dirección de recogida explícita
-        pickupAddress: pickupAddress || 'Ubicación actual',
-        // Dirección de entrega (destino final)
-        deliveryAddress: deliveryAddressInput || 'Por definir',
+        // Construir dirección de entrega con todos los campos (IGUAL QUE CREATE ORDER PAGE)
+        deliveryAddress: `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
         deliveryLocation: {
-          latitude: deliveryLat !== null ? deliveryLat : defaultLat,
-          longitude: deliveryLng !== null ? deliveryLng : defaultLng
+          latitude: lat,
+          longitude: lng
         },
-        // Descripción del viaje
-        items: `De: ${pickupAddress || 'Ubicación actual'}\nA: ${deliveryAddressInput || 'Por definir'}`,
+        // Items - Estructura idéntica a CreateOrderPage
+        items: `Servicio de Motocicleta (Taxi)\nOrigen: ${pickupAddress || 'Ubicación actual'}\nDestino: ${deliveryAddressInput || 'Por definir'}\n${items ? 'Descripción: ' + items : ''}`,
         // Distancia y precio calculados
         distance: distance ?? undefined,
+        deliveryCost: price ?? 30, // Guardar el precio calculado como costo de entrega
         // Notas adicionales con precio
         notes: `Servicio de motocicleta - Viaje rápido y seguro. Distancia: ${distance || 'N/A'} km. Tarifa: $${price || 'N/A'} MXN`
       };

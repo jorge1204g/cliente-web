@@ -424,7 +424,7 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
                 Número de pedido: <strong>#{orderId?.slice(-6).toUpperCase()}</strong>
               </p>
               <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
-                Tarifa: <strong>${order.notes?.match(/\$(\d+)/)?.[1] || 'N/A'} MXN</strong>
+                Tarifa: <strong>${order.deliveryCost || 'N/A'} MXN</strong>
               </p>
               {order.distance && (
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
