@@ -677,6 +677,38 @@ const MotorcycleServicePage: React.FC = () => {
                   🎯 ¿Cuál es tu destino?
                 </h2>
 
+                {/* UBICACIÓN ACTUAL - Solo lectura */}
+                {(street && houseNumber) && (
+                  <div style={{
+                    marginBottom: '1.5rem',
+                    padding: '1.25rem',
+                    backgroundColor: '#eff6ff',
+                    borderRadius: '0.75rem',
+                    border: '2px solid #3b82f6'
+                  }}>
+                    <p style={{
+                      fontSize: '0.875rem',
+                      color: '#1e40af',
+                      fontWeight: 'bold',
+                      margin: '0 0 0.5rem 0'
+                    }}>
+                      📍 Tu Ubicación Actual:
+                    </p>
+                    <p style={{
+                      fontSize: '1.125rem',
+                      color: '#1e40af',
+                      fontWeight: '600',
+                      margin: 0
+                    }}>
+                      {street} #{houseNumber}
+                      {suburb && `, ${suburb}`}
+                      {city && `, ${city}`}
+                      {state && `, ${state}`}
+                      {postcode && ` ${postcode}`}
+                    </p>
+                  </div>
+                )}
+
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={labelStyle}>🏁 Dirección de Entrega:</label>
                   <input
