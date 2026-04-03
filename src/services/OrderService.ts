@@ -119,8 +119,8 @@ class OrderService {
           productId: '' // Agregar productId vacío para compatibilidad
         }] : [],
         subtotal: 0,
-        deliveryCost: 60.00, // Ganancia fija de $60.00 por pedido
-        total: 60.00,
+        deliveryCost: orderData.deliveryCost || 60.00, // Usar el costo calculado o $60 por defecto
+        total: orderData.deliveryCost || 60.00,
         customerLocation: orderData.deliveryLocation || { latitude: 24.6536, longitude: -102.8738 },
         pickupLocationUrl: orderData.pickupUrl || 'Dirección de Prueba',
         deliveryAddress: orderData.deliveryAddress,
