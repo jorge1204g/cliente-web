@@ -103,6 +103,7 @@ class OrderService {
         orderId: orderId, // Agregar orderId explícito como en restaurante
         orderCode,
         orderType: 'MANUAL', // Usar MANUAL como los pedidos del restaurante para consistencia
+        serviceType: orderData.serviceType || null, // Asegurar que se guarde serviceType (MOTORCYCLE_TAXI o FOOD)
         // Estructura compatible con la app del repartidor y restaurante
         customer: {
           name: orderData.clientName,
