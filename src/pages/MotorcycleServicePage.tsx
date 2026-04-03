@@ -564,14 +564,16 @@ const MotorcycleServicePage: React.FC = () => {
         serviceType: 'MOTORCYCLE_TAXI',
         status: 'PENDING',
         createdAt: Date.now(),
-        // Construir dirección de entrega con todos los campos (IGUAL QUE CREATE ORDER PAGE)
-        deliveryAddress: `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
+        // 🚩 Punto de Partida (Recogida) - Usar pickupAddress de Google Maps
+        pickupAddress: pickupAddress || `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
+        // 🏁 Dirección de Entrega - Usar deliveryAddressInput (lo que escribió el usuario)
+        deliveryAddress: deliveryAddressInput || 'Por definir',
         deliveryLocation: {
           latitude: lat,
           longitude: lng
         },
         // Items - Estructura idéntica a CreateOrderPage
-        items: `Servicio de Motocicleta (Taxi)\nOrigen: ${pickupAddress || 'Ubicación actual'}\nDestino: ${deliveryAddressInput || 'Por definir'}\n${items ? 'Descripción: ' + items : ''}`,
+        items: `Servicio de Motocicleta (Taxi)\n🚩 Origen: ${pickupAddress || 'Ubicación actual'}\n🏁 Destino: ${deliveryAddressInput || 'Por definir'}\n${items ? '📝 Descripción: ' + items : ''}`,
         // Distancia y precio calculados
         distance: distance ?? undefined,
         deliveryCost: price ?? 30, // Guardar el precio calculado como costo de entrega
