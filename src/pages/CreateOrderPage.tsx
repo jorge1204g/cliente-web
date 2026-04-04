@@ -77,10 +77,34 @@ const CreateOrderPage: React.FC = () => {
   // Estados
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Estado para "Otra dirección"
+  const [useAlternativeAddress, setUseAlternativeAddress] = useState(false);
+  const [alternativeAddressInput, setAlternativeAddressInput] = useState('');
+  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
+  const deliveryAutocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
 
   // 🛰️ Auto-obtener ubicación al cargar la página - TOTALMENTE AUTOMÁTICO
   useEffect(() => {
     console.log('🛰️ [CREATE ORDER] INICIANDO PROCESO AUTOMÁTICO DE UBICACIÓN...');
+    
+    // Cargar Google Maps para autocompletado
+    const loadGoogleMaps = async () => {
+      try {
+        const { Loader } = await import('@googlemaps/js-api-loader');
+        const loader = new Loader({
+          apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+          version: 'weekly',
+          libraries: ['places']
+        });
+        await loader.load();
+        setIsGoogleLoaded(true);
+        console.log('✅ [GOOGLE MAPS] API cargada correctamente');
+      } catch (err) {
+        console.error('❌ [GOOGLE MAPS] Error al cargar:', err);
+      }
+    };
+    loadGoogleMaps();
     
     // Función para obtener ubicación con reintentos automáticos
     const obtenerUbicacionAutomatica = (intentos: number = 0) => {
@@ -189,6 +213,76 @@ const CreateOrderPage: React.FC = () => {
     }
   }, []); // Solo se ejecuta una vez al montar el componente
 
+  // Configurar autocompletado cuando el input esté disponible y Google cargado
+  useEffect(() => {
+    if (isGoogleLoaded && useAlternativeAddress) {
+      const deliveryInput = document.getElementById('alternative-delivery-autocomplete') as HTMLInputElement;
+      if (deliveryInput && !deliveryAutocompleteRef.current) {
+        // Necesitamos acceder a google.maps, asumimos que está disponible globalmente tras la carga
+        const google = (window as any).google;
+        if (google) {
+          deliveryAutocompleteRef.current = new google.maps.places.Autocomplete(deliveryInput, {
+            componentRestrictions: { country: 'mx' },
+            fields: ['geometry', 'formatted_address', 'address_components']
+          });
+          
+          deliveryAutocompleteRef.current.addListener('place_changed', () => {
+            const place = deliveryAutocompleteRef.current?.getPlace();
+            if (place && place.geometry) {
+              setDeliveryLat(place.geometry.location.lat());
+              setDeliveryLng(place.geometry.location.lng());
+              setAlternativeAddressInput(place.formatted_address || '');
+              
+              // Intentar llenar campos individuales si es posible
+              const components = place.address_components;
+              if (components) {
+                let street = '', number = '', suburb = '', city = '', state = '', postcode = '';
+                components.forEach((comp: any) => {
+                  const types = comp.types;
+                  if (types.includes('route')) street = comp.long_name;
+                  if (types.includes('street_number')) number = comp.long_name;
+                  if (types.includes('sublocality') || types.includes('neighborhood')) suburb = comp.long_name;
+                  if (types.includes('locality')) city = comp.long_name;
+                  if (types.includes('administrative_area_level_1')) state = comp.long_name;
+                  if (types.includes('postal_code')) postcode = comp.long_name;
+                });
+                
+                if (street) setStreet(street);
+                if (number) setHouseNumber(number);
+                if (suburb) setSuburb(suburb);
+                if (city) setCity(city);
+                if (state) setState(state);
+                if (postcode) setPostcode(postcode);
+              }
+              console.log('✅ [ALTERNATIVA] Dirección seleccionada:', place.formatted_address);
+            }
+          });
+        }
+      }
+    }
+  }, [isGoogleLoaded, useAlternativeAddress]);
+
+  // Manejar cambio de casilla "Es otra dirección"
+  const handleAlternativeAddressToggle = (checked: boolean) => {
+    setUseAlternativeAddress(checked);
+    if (checked) {
+      // Limpiar campos manuales para evitar confusión
+      setStreet('');
+      setHouseNumber('');
+      setSuburb('');
+      setCity('');
+      setState('');
+      setPostcode('');
+      setDeliveryLat(null);
+      setDeliveryLng(null);
+    } else {
+      // Si desactiva, limpiar la alternativa
+      setAlternativeAddressInput('');
+      setDeliveryLat(null);
+      setDeliveryLng(null);
+    }
+  };
+
   const serviceTypes = [
     { value: 'FOOD', label: '🍔 Comida', icon: 'Comida de restaurante' },
     { value: 'GASOLINE', label: '⛽ Gasolina', icon: 'Combustible' },
@@ -212,8 +306,13 @@ const CreateOrderPage: React.FC = () => {
     }
 
     // Validar campos obligatorios de dirección
-    if (!street || !houseNumber || !suburb || !city || !state || !postcode) {
+    if (!useAlternativeAddress && (!street || !houseNumber || !suburb || !city || !state || !postcode)) {
       setError('Por favor completa todos los campos de dirección (Calle, Número, Colonia, Ciudad, Estado, Código Postal)');
+      return;
+    }
+
+    if (useAlternativeAddress && !alternativeAddressInput) {
+      setError('Por favor selecciona una dirección de entrega usando el autocompletado de Google Maps');
       return;
     }
 
@@ -964,175 +1063,261 @@ const CreateOrderPage: React.FC = () => {
             }}>
               📍 Dirección de Entrega
             </h2>
-                     
-            {/* Campos de dirección separados */}
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
-              <div>
-                <label style={labelStyle}>🏠 Calle *</label>
+
+            {/* Casilla "Es otra dirección diferente" */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                 <input
-                  type="text"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Av. Hidalgo"
+                  type="checkbox"
+                  checked={useAlternativeAddress}
+                  onChange={(e) => handleAlternativeAddressToggle(e.target.checked)}
+                  style={{ width: '20px', height: '20px' }}
                 />
-              </div>
-              <div>
-                <label style={labelStyle}>🔢 Número *</label>
-                <input
-                  type="text"
-                  value={houseNumber}
-                  onChange={(e) => setHouseNumber(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. 123"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🏘️ Colonia *</label>
-                <input
-                  type="text"
-                  value={suburb}
-                  onChange={(e) => setSuburb(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Centro"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>🏙️ Ciudad *</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Fresnillo"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>📍 Estado *</label>
-                <input
-                  type="text"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. Zacatecas"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>📬 Código Postal *</label>
-                <input
-                  type="text"
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Ej. 99000"
-                />
-              </div>
+                <span style={{ fontWeight: '600', color: '#374151' }}>¿Es otra dirección diferente a mi ubicación actual?</span>
+              </label>
             </div>
 
-            {/* Confirmación de Dirección - Mensaje Verde */}
-            {(street && houseNumber && suburb && city && state && postcode) && (
-              <div style={{
-                marginTop: '1.5rem',
-                padding: '1.25rem',
-                backgroundColor: '#d1fae5',
-                borderRadius: '0.5rem',
-                border: '2px solid #10b981',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  color: '#065f46',
-                  margin: 0,
-                  lineHeight: '1.5'
-                }}>
-                  ✅ ¡TU DIRECCIÓN ES:
-                </p>
-                <p style={{
-                  fontSize: '1rem',
-                  color: '#047857',
-                  margin: '0.75rem 0 0 0',
-                  fontWeight: '600'
-                }}>
-                  {street} #{houseNumber}, {suburb}
-                  <br />
-                  {city}, {state} {postcode}
-                </p>
-              </div>
-            )}
+            {!useAlternativeAddress ? (
+              /* Campos manuales originales */
+              <>
+                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={labelStyle}>🏠 Calle *</label>
+                    <input
+                      type="text"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Av. Hidalgo"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>🔢 Número *</label>
+                    <input
+                      type="text"
+                      value={houseNumber}
+                      onChange={(e) => setHouseNumber(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. 123"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>🏘️ Colonia *</label>
+                    <input
+                      type="text"
+                      value={suburb}
+                      onChange={(e) => setSuburb(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Centro"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>🏙️ Ciudad *</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Fresnillo"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>📍 Estado *</label>
+                    <input
+                      type="text"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Zacatecas"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>📬 Código Postal *</label>
+                    <input
+                      type="text"
+                      value={postcode}
+                      onChange={(e) => setPostcode(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. 99000"
+                    />
+                  </div>
+                </div>
 
-            {/* Coordenadas GPS */}
-            {(deliveryLat !== null || deliveryLng !== null) && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1rem',
-                padding: '1rem',
-                backgroundColor: '#eff6ff',
-                borderRadius: '0.5rem',
-                border: '1px solid #bfdbfe'
-              }}>
-                <div>
-                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                    🌎 Latitud
-                  </label>
+                {/* Confirmación de Dirección - Mensaje Verde */}
+                {(street && houseNumber && suburb && city && state && postcode) && (
+                  <div style={{
+                    marginTop: '1.5rem',
+                    padding: '1.25rem',
+                    backgroundColor: '#d1fae5',
+                    borderRadius: '0.5rem',
+                    border: '2px solid #10b981',
+                    textAlign: 'center'
+                  }}>
+                    <p style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 'bold',
+                      color: '#065f46',
+                      margin: 0,
+                      lineHeight: '1.5'
+                    }}>
+                      ✅ ¡TU DIRECCIÓN ES:
+                    </p>
+                    <p style={{
+                      fontSize: '1rem',
+                      color: '#047857',
+                      margin: '0.75rem 0 0 0',
+                      fontWeight: '600'
+                    }}>
+                      {street} #{houseNumber}, {suburb}
+                      <br />
+                      {city}, {state} {postcode}
+                    </p>
+                  </div>
+                )}
+
+                {/* Coordenadas GPS */}
+                {(deliveryLat !== null || deliveryLng !== null) && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '1rem',
+                    marginBottom: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#eff6ff',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #bfdbfe'
+                  }}>
+                    <div>
+                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                        🌎 Latitud
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryLat !== null ? deliveryLat.toString() : ''}
+                        readOnly
+                        style={{
+                          ...inputStyle,
+                          backgroundColor: '#dbeafe',
+                          border: '1px solid #93c5fd',
+                          fontWeight: '600',
+                          color: '#1e40af'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                        🧭 Longitud
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryLng !== null ? deliveryLng.toString() : ''}
+                        readOnly
+                        style={{
+                          ...inputStyle,
+                          backgroundColor: '#dbeafe',
+                          border: '1px solid #93c5fd',
+                          fontWeight: '600',
+                          color: '#1e40af'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
+                  ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
+                </p>
+
+                {/* Componente de búsqueda de dirección con mapa - MOVIDO AL FINAL */}
+                <AddressSearchWithMap
+                  onAddressSelect={(data) => {
+                    setDeliveryLat(data.lat);
+                    setDeliveryLng(data.lng);
+                    setStreet(data.street);
+                    setHouseNumber(data.houseNumber);
+                    setSuburb(data.suburb);
+                    setCity(data.city);
+                    setState(data.state);
+                    setPostcode(data.postcode);
+                  }}
+                />
+              </>
+            ) : (
+              /* Nueva interfaz de búsqueda estilo motocicleta */
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={labelStyle}>🏁 Escribe tu dirección de entrega:</label>
                   <input
                     type="text"
-                    value={deliveryLat !== null ? deliveryLat.toString() : ''}
-                    readOnly
-                    style={{
-                      ...inputStyle,
-                      backgroundColor: '#dbeafe',
-                      border: '1px solid #93c5fd',
-                      fontWeight: '600',
-                      color: '#1e40af'
-                    }}
+                    id="alternative-delivery-autocomplete"
+                    value={alternativeAddressInput}
+                    onChange={(e) => setAlternativeAddressInput(e.target.value)}
+                    required={useAlternativeAddress}
+                    style={inputStyle}
+                    placeholder="Ej: Juana Gallo, Fresnillo, Zac."
+                    disabled={!isGoogleLoaded}
                   />
+                  {isGoogleLoaded && (
+                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
+                      ✨ Escribe y selecciona una dirección sugerida por Google Maps
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                    🧭 Longitud
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryLng !== null ? deliveryLng.toString() : ''}
-                    readOnly
-                    style={{
-                      ...inputStyle,
-                      backgroundColor: '#dbeafe',
-                      border: '1px solid #93c5fd',
-                      fontWeight: '600',
-                      color: '#1e40af'
-                    }}
-                  />
-                </div>
+
+                {/* Mapa visualizador de la dirección seleccionada */}
+                {deliveryLat && deliveryLng && (
+                  <div style={{
+                    marginTop: '1.5rem',
+                    padding: '1.25rem',
+                    backgroundColor: '#d1fae5',
+                    borderRadius: '0.5rem',
+                    border: '2px solid #10b981',
+                    textAlign: 'center'
+                  }}>
+                    <p style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 'bold',
+                      color: '#065f46',
+                      margin: 0,
+                      lineHeight: '1.5'
+                    }}>
+                      ✅ ¡TU DIRECCIÓN ES:
+                    </p>
+                    <p style={{
+                      fontSize: '1rem',
+                      color: '#047857',
+                      margin: '0.75rem 0 0 0',
+                      fontWeight: '600'
+                    }}>
+                      {alternativeAddressInput || `${street} ${houseNumber}, ${suburb}`}
+                      <br />
+                      {city}, {state} {postcode}
+                    </p>
+                    <div style={{ marginTop: '1rem', height: '200px', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        scrolling="no"
+                        marginHeight={0}
+                        marginWidth={0}
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${deliveryLng - 0.005},${deliveryLat - 0.005},${deliveryLng + 0.005},${deliveryLat + 0.005}&layer=mapnik&marker=${deliveryLat},${deliveryLng}`}
+                        style={{ border: '1px solid #ccc' }}
+                      ></iframe>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.5rem' }}>
+                      📍 Punto exacto en el mapa
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
-              ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
-            </p>
-
-            {/* Componente de búsqueda de dirección con mapa - MOVIDO AL FINAL */}
-            <AddressSearchWithMap
-              onAddressSelect={(data) => {
-                setDeliveryLat(data.lat);
-                setDeliveryLng(data.lng);
-                setStreet(data.street);
-                setHouseNumber(data.houseNumber);
-                setSuburb(data.suburb);
-                setCity(data.city);
-                setState(data.state);
-                setPostcode(data.postcode);
-              }}
-            />
           </section>
 
           {/* OCULTO - Recogida (Opcional) */}
