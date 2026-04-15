@@ -91,10 +91,21 @@ class MessageService {
       
       if (snapshot.exists()) {
         let deletedCount = 0;
-        const updates: { [key: string]: null } = {};
+        const updates: { [key: string]: any } = {};
         
+        // Debug: mostrar primeros 3 mensajes
+        let debugCount = 0;
         snapshot.forEach((childSnapshot) => {
           const message = childSnapshot.val();
+          
+          if (debugCount < 3) {
+            console.log(`🔍 [DEBUG] Mensaje #${debugCount + 1}:`, {
+              senderId: message.senderId,
+              receiverId: message.receiverId,
+              orderId: message.orderId
+            });
+            debugCount++;
+          }
           
           // Verificar si el mensaje es entre este repartidor y cliente
           const isBetweenUsers = (
@@ -102,19 +113,23 @@ class MessageService {
             (message.senderId === customerPhone && message.receiverId === deliveryId)
           );
           
-          // Verificar si el mensaje es de este pedido (si tiene orderId)
-          const isForThisOrder = message.orderId === orderId || !message.orderId;
-          
-          // Eliminar si es entre estos usuarios Y (es de este pedido O no tiene orderId)
-          if (isBetweenUsers && isForThisOrder) {
+          // Eliminar TODOS los mensajes entre estos usuarios (sin importar orderId)
+          if (isBetweenUsers) {
             updates[childSnapshot.key!] = null;
             deletedCount++;
+            console.log('🗑️ [CHAT] Marcando para eliminar:', childSnapshot.key);
           }
         });
         
         // Eliminar todos los mensajes en una sola operación
         if (deletedCount > 0) {
-          await set(messagesRef, { ...snapshot.val(), ...updates });
+          // Usar update para eliminar múltiples nodos eficientemente
+          const messagesRefForUpdate = databaseRef(database, 'messages');
+          await Promise.all(
+            Object.keys(updates).map(key => 
+              set(databaseRef(database, `messages/${key}`), null)
+            )
+          );
           console.log(`✅ [CHAT] ${deletedCount} mensajes eliminados`);
         } else {
           console.log('ℹ️ [CHAT] No se encontraron mensajes para eliminar');
@@ -123,6 +138,7 @@ class MessageService {
         return true;
       }
       
+      console.log('⚠️ [CHAT] No hay mensajes en Firebase');
       return false;
     } catch (error: any) {
       console.error('❌ [CHAT] Error al limpiar mensajes:', error);
