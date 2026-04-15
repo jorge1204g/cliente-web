@@ -79,33 +79,24 @@ class MessageService {
     }
   }
 
-  // Limpiar mensajes del chat cuando se completa una entrega
-  async clearChatMessages(deliveryId: string, customerPhone: string, orderId: string): Promise<boolean> {
+  // Archivar y limpiar mensajes del chat cuando se completa una entrega
+  async archiveAndClearChat(deliveryId: string, customerPhone: string, orderId: string): Promise<boolean> {
     try {
-      console.log('🗑️ [CHAT] Limpiando mensajes del pedido:', orderId);
-      console.log('🗑️ [CHAT] Repartidor:', deliveryId, 'Cliente:', customerPhone);
+      console.log('📦 [CHAT] Archivando mensajes del pedido:', orderId);
+      console.log('📦 [CHAT] Repartidor:', deliveryId, 'Cliente:', customerPhone);
       
       // Obtener todos los mensajes
       const messagesRef = databaseRef(database, 'messages');
       const snapshot = await get(messagesRef);
       
       if (snapshot.exists()) {
+        let archivedCount = 0;
         let deletedCount = 0;
-        const updates: { [key: string]: any } = {};
+        const chatMessages: any[] = [];
         
-        // Debug: mostrar primeros 3 mensajes
-        let debugCount = 0;
+        // Primero: Recopilar mensajes de ESTE pedido
         snapshot.forEach((childSnapshot) => {
           const message = childSnapshot.val();
-          
-          if (debugCount < 3) {
-            console.log(`🔍 [DEBUG] Mensaje #${debugCount + 1}:`, {
-              senderId: message.senderId,
-              receiverId: message.receiverId,
-              orderId: message.orderId
-            });
-            debugCount++;
-          }
           
           // Verificar si el mensaje es entre este repartidor y cliente
           const isBetweenUsers = (
@@ -113,24 +104,60 @@ class MessageService {
             (message.senderId === customerPhone && message.receiverId === deliveryId)
           );
           
-          // Eliminar TODOS los mensajes entre estos usuarios (sin importar orderId)
-          if (isBetweenUsers) {
-            updates[childSnapshot.key!] = null;
-            deletedCount++;
-            console.log('🗑️ [CHAT] Marcando para eliminar:', childSnapshot.key);
+          // Solo mensajes de ESTE pedido (por orderId)
+          const isForThisOrder = message.orderId === orderId;
+          
+          if (isBetweenUsers && isForThisOrder) {
+            // Agregar a la lista para archivar
+            chatMessages.push({
+              id: message.id,
+              senderId: message.senderId,
+              senderName: message.senderName,
+              receiverId: message.receiverId,
+              receiverName: message.receiverName,
+              message: message.message,
+              timestamp: message.timestamp,
+              isRead: message.isRead,
+              messageType: message.messageType,
+              imageUrl: message.imageUrl || ''
+            });
+            archivedCount++;
           }
         });
         
-        // Eliminar todos los mensajes en una sola operación
-        if (deletedCount > 0) {
-          // Usar update para eliminar múltiples nodos eficientemente
-          const messagesRefForUpdate = databaseRef(database, 'messages');
-          await Promise.all(
-            Object.keys(updates).map(key => 
-              set(databaseRef(database, `messages/${key}`), null)
-            )
+        // Segundo: Archivar en el nodo del pedido
+        if (chatMessages.length > 0) {
+          const orderChatArchiveRef = databaseRef(database, `orders/${orderId}/chatHistory`);
+          await set(orderChatArchiveRef, chatMessages);
+          console.log(`✅ [ARCHIVE] ${archivedCount} mensajes archivados en el pedido`);
+        } else {
+          console.log('ℹ️ [ARCHIVE] No hay mensajes para archivar');
+        }
+        
+        // Tercero: Eliminar SOLO los mensajes de ESTE pedido del chat activo
+        const deletePromises: Promise<void>[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const message = childSnapshot.val();
+          
+          const isBetweenUsers = (
+            (message.senderId === deliveryId && message.receiverId === customerPhone) ||
+            (message.senderId === customerPhone && message.receiverId === deliveryId)
           );
-          console.log(`✅ [CHAT] ${deletedCount} mensajes eliminados`);
+          
+          const isForThisOrder = message.orderId === orderId;
+          
+          if (isBetweenUsers && isForThisOrder) {
+            deletePromises.set(
+              set(databaseRef(database, `messages/${childSnapshot.key!}`), null)
+            );
+            deletedCount++;
+          }
+        });
+        
+        if (deletePromises.length > 0) {
+          await Promise.all(deletePromises);
+          console.log(`✅ [CHAT] ${deletedCount} mensajes eliminados del chat activo`);
+          console.log('📦 [CHAT] Historial guardado en: orders/' + orderId + '/chatHistory');
         } else {
           console.log('ℹ️ [CHAT] No se encontraron mensajes para eliminar');
         }
@@ -141,7 +168,7 @@ class MessageService {
       console.log('⚠️ [CHAT] No hay mensajes en Firebase');
       return false;
     } catch (error: any) {
-      console.error('❌ [CHAT] Error al limpiar mensajes:', error);
+      console.error('❌ [CHAT] Error al archivar y limpiar mensajes:', error);
       return false;
     }
   }

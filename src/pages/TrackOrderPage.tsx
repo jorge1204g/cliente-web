@@ -356,7 +356,7 @@ const TrackOrderPage: React.FC = () => {
       
       if (deliveryId && customerPhone) {
         MessageService.getInstance()
-          .clearChatMessages(deliveryId, customerPhone, orderIdToClear)
+          .archiveAndClearChat(deliveryId, customerPhone, orderIdToClear)
           .then((success: boolean) => {
             if (success) {
               console.log('✅ [CHAT] Chat limpiado exitosamente');
