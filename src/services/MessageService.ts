@@ -79,6 +79,57 @@ class MessageService {
     }
   }
 
+  // Limpiar mensajes del chat cuando se completa una entrega
+  async clearChatMessages(deliveryId: string, customerPhone: string, orderId: string): Promise<boolean> {
+    try {
+      console.log('🗑️ [CHAT] Limpiando mensajes del pedido:', orderId);
+      console.log('🗑️ [CHAT] Repartidor:', deliveryId, 'Cliente:', customerPhone);
+      
+      // Obtener todos los mensajes
+      const messagesRef = databaseRef(database, 'messages');
+      const snapshot = await get(messagesRef);
+      
+      if (snapshot.exists()) {
+        let deletedCount = 0;
+        const updates: { [key: string]: null } = {};
+        
+        snapshot.forEach((childSnapshot) => {
+          const message = childSnapshot.val();
+          
+          // Verificar si el mensaje es entre este repartidor y cliente
+          const isBetweenUsers = (
+            (message.senderId === deliveryId && message.receiverId === customerPhone) ||
+            (message.senderId === customerPhone && message.receiverId === deliveryId)
+          );
+          
+          // Verificar si el mensaje es de este pedido (si tiene orderId)
+          const isForThisOrder = message.orderId === orderId || !message.orderId;
+          
+          // Eliminar si es entre estos usuarios Y (es de este pedido O no tiene orderId)
+          if (isBetweenUsers && isForThisOrder) {
+            updates[childSnapshot.key!] = null;
+            deletedCount++;
+          }
+        });
+        
+        // Eliminar todos los mensajes en una sola operación
+        if (deletedCount > 0) {
+          await set(messagesRef, { ...snapshot.val(), ...updates });
+          console.log(`✅ [CHAT] ${deletedCount} mensajes eliminados`);
+        } else {
+          console.log('ℹ️ [CHAT] No se encontraron mensajes para eliminar');
+        }
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('❌ [CHAT] Error al limpiar mensajes:', error);
+      return false;
+    }
+  }
+
   // Enviar imagen
   async sendImage(
     senderId: string,

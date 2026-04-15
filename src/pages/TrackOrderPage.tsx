@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../services/Firebase';
+import { MessageService } from '../services/MessageService';
 
 interface Location {
   latitude: number;
@@ -56,6 +57,7 @@ const TrackOrderPage: React.FC = () => {
   const [driverLocation, setDriverLocation] = useState<Location | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [googleLoaded, setGoogleLoaded] = useState<any>(null);
+  const [previousStatus, setPreviousStatus] = useState<string>('');
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -342,6 +344,34 @@ const TrackOrderPage: React.FC = () => {
       setLoading(false);
     }
   }, [orderId, phone, orderCode]);
+
+  // Detectar cuando el pedido cambia a DELIVERED y limpiar el chat
+  useEffect(() => {
+    if (order && order.status === 'DELIVERED' && previousStatus && previousStatus !== 'DELIVERED') {
+      console.log('🎉 [CHAT] Pedido completado! Limpiando mensajes del chat...');
+      
+      const deliveryId = order.assignedToDeliveryId;
+      const customerPhone = order.customer?.phone || order.clientPhone || phone || '';
+      const orderIdToClear = order.orderCode || order.id;
+      
+      if (deliveryId && customerPhone) {
+        MessageService.getInstance()
+          .clearChatMessages(deliveryId, customerPhone, orderIdToClear)
+          .then((success: boolean) => {
+            if (success) {
+              console.log('✅ [CHAT] Chat limpiado exitosamente');
+            } else {
+              console.warn('⚠️ [CHAT] No se pudo limpiar el chat');
+            }
+          });
+      }
+    }
+    
+    // Actualizar el estado anterior
+    if (order && order.status) {
+      setPreviousStatus(order.status);
+    }
+  }, [order?.status, order]);
 
   // Escuchar ubicacion del repartidor en tiempo real
   useEffect(() => {
