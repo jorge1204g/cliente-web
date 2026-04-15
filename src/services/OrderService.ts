@@ -6,6 +6,7 @@ export interface ClientOrder {
   clientId: string;
   clientName: string;
   clientPhone: string;
+  clientEmail?: string;
   clientAddress: string;
   clientLocation?: {
     latitude: number;
@@ -108,6 +109,7 @@ class OrderService {
         customer: {
           name: orderData.clientName,
           phone: orderData.clientPhone,
+          email: orderData.clientEmail || '',
           address: orderData.deliveryAddress,
           location: orderData.deliveryLocation || { latitude: 24.6536, longitude: -102.8738 }
         },
@@ -118,6 +120,8 @@ class OrderService {
           subtotal: 0,
           productId: '' // Agregar productId vacío para compatibilidad
         }] : [],
+        // Guardar también el string original de items para motocicleta
+        itemsOriginalString: orderData.items && orderData.items.trim() ? orderData.items : null,
         subtotal: 0,
         deliveryCost: orderData.deliveryCost || 60.00, // Usar el costo calculado o $60 por defecto
         total: orderData.deliveryCost || 60.00,

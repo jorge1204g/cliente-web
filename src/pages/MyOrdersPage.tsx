@@ -282,6 +282,7 @@ const MyOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<ClientOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState<{ [key: string]: number }>({});
+  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active'); // Pestaña activa
 
   // Función para calcular el tiempo restante (5 minutos desde la creación)
   const calculateTimeRemaining = (createdAt: number): number => {
@@ -571,11 +572,95 @@ const MyOrdersPage: React.FC = () => {
       ) : (
         <div style={{
           maxWidth: '800px',
-          margin: '0 auto',
-          display: 'grid',
-          gap: '1rem'
+          margin: '0 auto'
         }}>
-          {orders.map((order) => (
+          {/* Pestañas de navegación */}
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            marginBottom: '1.5rem',
+            backgroundColor: 'white',
+            padding: '0.5rem',
+            borderRadius: '0.75rem',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            <button
+              onClick={() => setActiveTab('active')}
+              style={{
+                flex: 1,
+                padding: '0.875rem 1.5rem',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                backgroundColor: activeTab === 'active' ? '#667eea' : 'transparent',
+                color: activeTab === 'active' ? 'white' : '#6b7280',
+                transition: 'all 0.2s'
+              }}
+            >
+              🚀 Pedidos en Curso
+              {orders.filter(o => o.status !== 'delivered' && o.status !== 'DELIVERED' && o.status !== 'cancelled' && o.status !== 'CANCELLED').length > 0 && (
+                <span style={{
+                  marginLeft: '0.5rem',
+                  backgroundColor: activeTab === 'active' ? 'rgba(255,255,255,0.3)' : '#667eea',
+                  color: activeTab === 'active' ? 'white' : 'white',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '1rem',
+                  fontSize: '0.75rem'
+                }}>
+                  {orders.filter(o => o.status !== 'delivered' && o.status !== 'DELIVERED' && o.status !== 'cancelled' && o.status !== 'CANCELLED').length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              style={{
+                flex: 1,
+                padding: '0.875rem 1.5rem',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                backgroundColor: activeTab === 'history' ? '#667eea' : 'transparent',
+                color: activeTab === 'history' ? 'white' : '#6b7280',
+                transition: 'all 0.2s'
+              }}
+            >
+              📜 Historial
+              {orders.filter(o => o.status === 'delivered' || o.status === 'DELIVERED').length > 0 && (
+                <span style={{
+                  marginLeft: '0.5rem',
+                  backgroundColor: activeTab === 'history' ? 'rgba(255,255,255,0.3)' : '#6b7280',
+                  color: 'white',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '1rem',
+                  fontSize: '0.75rem'
+                }}>
+                  {orders.filter(o => o.status === 'delivered' || o.status === 'DELIVERED').length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Lista de pedidos filtrados */}
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {orders
+              .filter(order => {
+                if (activeTab === 'active') {
+                  // Mostrar solo pedidos activos (no entregados ni cancelados)
+                  return order.status !== 'delivered' && order.status !== 'DELIVERED' && order.status !== 'cancelled' && order.status !== 'CANCELLED';
+                } else {
+                  // Mostrar solo pedidos entregados
+                  return order.status === 'delivered' || order.status === 'DELIVERED';
+                }
+              })
+              .sort((a, b) => {
+                // Ordenar por fecha más reciente
+                return b.createdAt - a.createdAt;
+              })
+              .map((order) => (
             <div
               key={order.id}
               style={{
@@ -1054,6 +1139,60 @@ const MyOrdersPage: React.FC = () => {
               )}
             </div>
           ))}
+            
+            {/* Mensaje cuando no hay pedidos en la pestaña seleccionada */}
+            {orders.filter(order => {
+              if (activeTab === 'active') {
+                return order.status !== 'delivered' && order.status !== 'DELIVERED' && order.status !== 'cancelled' && order.status !== 'CANCELLED';
+              } else {
+                return order.status === 'delivered' || order.status === 'DELIVERED';
+              }
+            }).length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '3rem 1rem',
+                backgroundColor: 'white',
+                borderRadius: '0.75rem',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>
+                  {activeTab === 'active' ? '📦' : '📜'}
+                </div>
+                <h3 style={{ 
+                  color: '#374151', 
+                  marginBottom: '0.5rem',
+                  fontSize: '1.25rem'
+                }}>
+                  {activeTab === 'active' 
+                    ? 'No hay pedidos en curso' 
+                    : 'No hay historial de pedidos'
+                  }
+                </h3>
+                <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                  {activeTab === 'active' 
+                    ? '¡Crea un nuevo pedido para comenzar!' 
+                    : 'Los pedidos entregados aparecerán aquí.'
+                  }
+                </p>
+                {activeTab === 'active' && (
+                  <button
+                    onClick={() => navigate('/crear-pedido')}
+                    style={{
+                      backgroundColor: '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.875rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🚀 Crear Pedido
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -452,23 +452,41 @@ const ChatPage: React.FC = () => {
                   {/* Renderizar imagen si es tipo IMAGE */}
                   {msg.messageType === 'IMAGE' && msg.imageUrl ? (
                     <div>
-                      <img 
-                        src={msg.imageUrl.startsWith('data:image') ? msg.imageUrl : `data:image/jpeg;base64,${msg.imageUrl}`} 
-                        alt="Imagen enviada" 
-                        style={{
-                          maxWidth: '100%',
-                          borderRadius: '0.5rem',
-                          marginTop: '0.5rem'
-                        }}
-                        onError={(e) => {
-                          console.error('❌ Error al cargar imagen:', e);
-                          console.error('   URL completa:', msg.imageUrl);
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                        onLoad={() => {
-                          console.log('✅ Imagen cargada correctamente');
-                        }}
-                      />
+                      {(() => {
+                        console.log('🖼️ [DEBUG] Renderizando imagen:');
+                        console.log('   ├── messageType:', msg.messageType);
+                        console.log('   ├── imageUrl existe:', !!msg.imageUrl);
+                        console.log('   ├── imageUrl length:', msg.imageUrl?.length);
+                        console.log('   ├── starts with data:image:', msg.imageUrl?.startsWith('data:image'));
+                        
+                        const imageSrc = msg.imageUrl.startsWith('data:image') 
+                          ? msg.imageUrl 
+                          : `data:image/jpeg;base64,${msg.imageUrl}`;
+                        
+                        console.log('   ├── imageSrc length:', imageSrc.length);
+                        console.log('   └── imageSrc preview:', imageSrc.substring(0, 50) + '...');
+                        
+                        return (
+                          <img 
+                            src={imageSrc}
+                            alt="Imagen enviada" 
+                            style={{
+                              maxWidth: '100%',
+                              borderRadius: '0.5rem',
+                              marginTop: '0.5rem'
+                            }}
+                            onError={(e) => {
+                              console.error('❌ Error al cargar imagen:', e);
+                              console.error('   URL completa:', msg.imageUrl);
+                              console.error('   imageSrc length:', imageSrc.length);
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                            onLoad={() => {
+                              console.log('✅ Imagen cargada correctamente');
+                            }}
+                          />
+                        );
+                      })()}
                       <p style={{ fontSize: '0.95rem', lineHeight: '1.4', marginTop: '0.5rem' }}>
                         {msg.message}
                       </p>

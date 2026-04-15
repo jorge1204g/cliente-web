@@ -56,7 +56,7 @@ class MessageService {
         isRead: false,
         messageType,
         orderId,
-        imageUrl: imageUrl || '' // Usar string vacío si es undefined
+        imageUrl // Mantener undefined si no se proporciona
       };
       
       // Guardar en Firebase
@@ -194,7 +194,8 @@ class MessageService {
               timestamp: msg.timestamp || Date.now(),
               isRead: msg.isRead || false,
               messageType: msg.messageType || 'TEXT',
-              orderId: msg.orderId
+              orderId: msg.orderId,
+              imageUrl: msg.imageUrl // ⚠️ IMPORTANTE: Incluir imageUrl
             };
             
             messagesArray.push(messageObj);
@@ -278,7 +279,8 @@ class MessageService {
                 timestamp: msg.timestamp || Date.now(),
                 isRead: msg.isRead || false,
                 messageType: msg.messageType || 'TEXT',
-                orderId: msg.orderId
+                orderId: msg.orderId,
+                imageUrl: msg.imageUrl // ⚠️ IMPORTANTE: Incluir imageUrl
               });
             }
           }

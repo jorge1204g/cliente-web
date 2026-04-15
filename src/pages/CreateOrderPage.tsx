@@ -74,6 +74,9 @@ const CreateOrderPage: React.FC = () => {
   const [_notes, _setNotes] = useState('');
   const [_confirmationCode, _setConfirmationCode] = useState('');
   
+  // Descripción adicional del servicio
+  const [additionalDescription, setAdditionalDescription] = useState('');
+  
   // Estados
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -433,6 +436,10 @@ const CreateOrderPage: React.FC = () => {
       // Si no es ningún tipo específico, usar items genérico
       ...(!['FOOD', 'GASOLINE', 'STATIONERY', 'MEDICINES', 'BEVERAGES', 'WATER', 'GAS', 'PAYMENTS', 'FAVORS'].includes(serviceType) && {
         items
+      }),
+      // Agregar descripción adicional si existe
+      ...(additionalDescription && {
+        additionalDescription
       })
       // OCULTO - Notas y código ya no se incluyen
     };
@@ -1048,6 +1055,28 @@ const CreateOrderPage: React.FC = () => {
                   </p>
                 </div>
               )}
+
+              {/* 📝 Descripción Adicional - Campo común para todos los servicios */}
+              <div style={{ 
+                marginTop: '1.5rem', 
+                paddingTop: '1.5rem', 
+                borderTop: '2px dashed #e5e7eb'
+              }}>
+                <div>
+                  <label style={{ ...labelStyle, color: '#6b7280' }}>
+                    💬 ¿Algo más que debamos saber sobre tu pedido? (opcional)
+                  </label>
+                  <textarea
+                    value={additionalDescription}
+                    onChange={(e) => setAdditionalDescription(e.target.value)}
+                    style={{ ...inputStyle, minHeight: '80px' }}
+                    placeholder="Ej. Instrucciones especiales, preferencias, detalles adicionales..."
+                  />
+                  <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
+                    💡 Este campo es opcional. Úsalo para dar instrucciones especiales o detalles adicionales.
+                  </p>
+                </div>
+              </div>
             </section>
           )}
 
@@ -1261,11 +1290,14 @@ const CreateOrderPage: React.FC = () => {
                     required={useAlternativeAddress}
                     style={inputStyle}
                     placeholder="Ej: Juana Gallo, Fresnillo, Zac."
-                    disabled={!isGoogleLoaded}
                   />
-                  {isGoogleLoaded && (
+                  {isGoogleLoaded ? (
                     <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
                       ✨ Escribe y selecciona una dirección sugerida por Google Maps
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' }}>
+                      ⚠️ Escribe tu dirección manualmente (Google Maps no disponible)
                     </p>
                   )}
                 </div>

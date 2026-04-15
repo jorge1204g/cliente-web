@@ -454,6 +454,21 @@ const MotorcycleOrderTrackingPage: React.FC = () => {
                     (clientAddress: {order.clientAddress})
                   </p>
                 )}
+                {/* Mensaje de confirmación de dirección guardada */}
+                {(order.pickupAddress || order.clientAddress) && (
+                  <p style={{ 
+                    fontSize: '0.8rem', 
+                    color: '#10b981', 
+                    marginTop: '0.5rem',
+                    padding: '0.5rem',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    borderRadius: '0.375rem',
+                    border: '1px solid #10b981',
+                    fontWeight: '600'
+                  }}>
+                    ✓ Tu dirección creada es: {order.pickupAddress || order.clientAddress}
+                  </p>
+                )}
               </div>
 
               {/* Destino - Usar deliveryAddress, con fallback a items si está vacío */}

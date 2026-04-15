@@ -45,7 +45,7 @@ const AddressSearchWithMap: React.FC<AddressSearchProps> = ({ onAddressSelect })
         await import('@googlemaps/js-api-loader').then(async ({ Loader }) => {
           const loader = new Loader({
             apiKey: GOOGLE_MAPS_API_KEY,
-            version: 'beta',
+            version: 'weekly', // Cambiado de 'beta' a 'weekly' para evitar conflictos
             libraries: ['places']
           });
           

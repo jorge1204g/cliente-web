@@ -10,6 +10,7 @@ const MotorcycleServicePage: React.FC = () => {
   // Datos del cliente
   const [clientName, setClientName] = useState(AuthService.getClientName() || '');
   const [clientPhone, setClientPhone] = useState(AuthService.getClientPhone() || '');
+  const [clientEmail, setClientEmail] = useState(AuthService.getClientEmail() || '');
   const [street, setStreet] = useState('');
   const [houseNumber, setHouseNumber] = useState('');
   const [suburb, setSuburb] = useState('');
@@ -19,46 +20,62 @@ const MotorcycleServicePage: React.FC = () => {
   const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
   const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
   
-  // Tipo de servicio - Forzado a MOTOCICLETA
-  const [serviceType] = useState('MOTORCYCLE_TAXI');
+  // Descripción del viaje
+  const [items, setItems] = useState('');
   
-  // Campos específicos para MOTOCICLETA - CON AUTOCOMPLETADO GOOGLE MAPS
-  const [pickupAddress, setPickupAddress] = useState(''); // 🚩 Dirección de Recogida (autocompletado)
-  const [deliveryAddressInput, setDeliveryAddressInput] = useState(''); // 🏁 Dirección de Entrega (autocompletado)
-  const [distance, setDistance] = useState<number | null>(null); // 🗺️ Distancia calculada
-  const [price, setPrice] = useState<number | null>(null); // 💰 Precio calculado
-  const [isCalculating, setIsCalculating] = useState(false); // Estado de cálculo
-  
-  // Referencias para autocompletado
-  const pickupAutocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
-  const deliveryAutocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
-  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
-  const googleLoadedRef = React.useRef(false); // Evitar carga múltiple
-  
-  // OCULTO - Variables necesarias para el código pero no usadas en UI visible
-  const [_requiresPickup, _setRequiresPickup] = useState(false);
-  const [_pickupAddress, _setPickupAddress] = useState('');
-  const [_pickupName, _setPickupName] = useState('');
-  const [_pickupUrl, _setPickupUrl] = useState('');
-  const [_pickupLat, _setPickupLat] = useState<number | null>(null);
-  const [_pickupLng, _setPickupLng] = useState<number | null>(null);
-  
-  // Detalles del pedido
-  const [items, setItems] = useState(''); // Descripción del viaje
-  const [_notes, _setNotes] = useState('');
-  const [_confirmationCode, _setConfirmationCode] = useState('');
+  // Dirección de entrega (nuevo)
+  const [deliveryAddressInput, setDeliveryAddressInput] = useState('');
+  const deliveryAutocompleteRef2 = React.useRef<google.maps.places.Autocomplete | null>(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [distance, setDistance] = useState<number | null>(null);
+  const [price, setPrice] = useState<number | null>(null);
+  const [destLat, setDestLat] = useState<number | null>(null);
+  const [destLng, setDestLng] = useState<number | null>(null);
   
   // Estados
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [googleInstance, setGoogleInstance] = useState<any>(null); // Guardar instancia de Google
-  const [showDestinationSection, setShowDestinationSection] = useState(false); // Mostrar sección de destino
-  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false); // Calculando ruta
-  const [showFullForm, setShowFullForm] = useState(false); // Mostrar formulario completo
+  
+  // Estado para "Otra dirección"
+  const [useAlternativeAddress, setUseAlternativeAddress] = useState(false);
+  const [alternativeAddressInput, setAlternativeAddressInput] = useState('');
+  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
+  const deliveryAutocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
 
   // 🛰️ Auto-obtener ubicación al cargar la página - TOTALMENTE AUTOMÁTICO
   useEffect(() => {
     console.log('🛰️ [MOTORCYCLE] INICIANDO PROCESO AUTOMÁTICO DE UBICACIÓN...');
+    
+    // Verificar si Google Maps ya está cargado
+    if ((window as any).google && (window as any).google.maps && (window as any).google.maps.places) {
+      console.log('✅ [GOOGLE MAPS] Ya estaba cargado previamente');
+      setIsGoogleLoaded(true);
+      return;
+    }
+    
+    // Cargar Google Maps para autocompletado
+    const loadGoogleMaps = async () => {
+      try {
+        console.log('🔑 [GOOGLE MAPS] API Key:', import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? 'Configurada' : 'NO CONFIGURADA');
+        
+        const { Loader } = await import('@googlemaps/js-api-loader');
+        const loader = new Loader({
+          apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+          version: 'weekly',
+          libraries: ['places']
+        });
+        
+        console.log('⏳ [GOOGLE MAPS] Iniciando carga...');
+        await loader.load();
+        setIsGoogleLoaded(true);
+        console.log('✅ [GOOGLE MAPS] API cargada correctamente');
+        console.log('✅ [GOOGLE MAPS] window.google disponible:', !!(window as any).google);
+        console.log('✅ [GOOGLE MAPS] google.maps.places disponible:', !!((window as any).google?.maps?.places));
+      } catch (err) {
+        console.error('❌ [GOOGLE MAPS] Error al cargar:', err);
+      }
+    };
+    loadGoogleMaps();
     
     // Función para obtener ubicación con reintentos automáticos
     const obtenerUbicacionAutomatica = (intentos: number = 0) => {
@@ -98,21 +115,15 @@ const MotorcycleServicePage: React.FC = () => {
                 
               // Extraer información de la dirección
               const road = data.address?.road || data.address?.pedestrian || '';
-              const hNumber = data.address?.house_number || 'S/N';
+              const hNumber = data.address?.house_number || '';
               const s = data.address?.suburb || data.address?.neighbourhood || data.address?.quarter || '';
               const c = data.address?.city || data.address?.town || data.address?.village || '';
               const p = data.address?.postcode || '';
               const st = data.address?.state || '';
                 
-              // ✅ LLENAR campos automáticamente con la dirección obtenida
-              setStreet(road);
-              setHouseNumber(hNumber);
-              setSuburb(s);
-              setCity(c);
-              setPostcode(p);
-              setState(st);
+              // NO llenar campos automáticamente - El usuario lo hará manualmente
+              console.log('ℹ️ [MOTORCYCLE] Dirección obtenida (NO se llena automáticamente):', { road, city: c });
               
-              console.log('✅ [MOTORCYCLE] Dirección llenada automáticamente:', { road, city: c });
             } catch (err) {
               console.warn('⚠️ [MOTORCYCLE] No se pudo obtener la dirección exacta, pero las coordenadas están guardadas');
               console.error('   Error:', err);
@@ -171,318 +182,274 @@ const MotorcycleServicePage: React.FC = () => {
     } else {
       console.log('✅ [MOTORCYCLE] Ya hay coordenadas disponibles:', deliveryLat, deliveryLng);
     }
-  }, []);
+  }, []); // Solo se ejecuta una vez al montar el componente
 
-  // 🗺️ Cargar Google Maps y configurar autocompletado (UNA SOLA VEZ)
+  // Configurar autocompletado cuando el input esté disponible y Google cargado
   useEffect(() => {
-    // Evitar carga múltiple
-    if (googleLoadedRef.current) {
-      console.log('ℹ️ [GOOGLE MAPS] Ya está cargado, saltando...');
-      return;
-    }
-    
-    const loadGoogleMaps = async () => {
-      try {
-        console.log('🔄 [GOOGLE MAPS] Iniciando carga ÚNICA de Google Maps...');
-        
-        const { Loader } = await import('@googlemaps/js-api-loader');
-        const loader = new Loader({
-          apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-          version: 'weekly', // USAR weekly consistentemente
-          libraries: ['places']
-        });
-        
-        const google = await loader.load();
-        setIsGoogleLoaded(true);
-        googleLoadedRef.current = true;
-        setGoogleInstance(google); // Guardar instancia para usar después
-        console.log('✅ [GOOGLE MAPS] API cargada correctamente (UNA SOLA VEZ)');
-        
-        // Configurar autocompletado para recogida (USANDO API CLÁSICA QUE FUNCIONA)
-        const pickupInput = document.getElementById('pickup-autocomplete') as HTMLInputElement;
-        if (pickupInput) {
-          pickupAutocompleteRef.current = new google.maps.places.Autocomplete(pickupInput, {
-            componentRestrictions: { country: 'mx' },
-            fields: ['geometry', 'formatted_address', 'name']
-          });
-          
-          pickupAutocompleteRef.current.addListener('place_changed', () => {
-            const place = pickupAutocompleteRef.current?.getPlace();
-            if (place && place.formatted_address) {
-              setPickupAddress(place.formatted_address);
-              console.log('✅ [RECOGIDA] Dirección seleccionada:', place.formatted_address);
-              
-              // Calcular distancia si hay dirección de entrega
-              if (deliveryAddressInput) {
-                calculateDistance(pickupAddress, deliveryAddressInput);
-              }
-            }
-          });
-          console.log('✅ [RECOGIDA] Autocomplete configurado');
-        }
-        
-        // Configurar autocompletado para entrega (USANDO API CLÁSICA QUE FUNCIONA)
-        const deliveryInput = document.getElementById('delivery-autocomplete') as HTMLInputElement;
-        if (deliveryInput) {
+    if (isGoogleLoaded && useAlternativeAddress) {
+      const deliveryInput = document.getElementById('alternative-delivery-autocomplete') as HTMLInputElement;
+      if (deliveryInput && !deliveryAutocompleteRef.current) {
+        // Necesitamos acceder a google.maps, asumimos que está disponible globalmente tras la carga
+        const google = (window as any).google;
+        if (google) {
           deliveryAutocompleteRef.current = new google.maps.places.Autocomplete(deliveryInput, {
             componentRestrictions: { country: 'mx' },
-            fields: ['geometry', 'formatted_address', 'name']
+            fields: ['geometry', 'formatted_address', 'address_components']
           });
           
           deliveryAutocompleteRef.current.addListener('place_changed', () => {
             const place = deliveryAutocompleteRef.current?.getPlace();
-            if (place && place.formatted_address) {
-              setDeliveryAddressInput(place.formatted_address);
-              console.log('✅ [ENTREGA] Dirección seleccionada:', place.formatted_address);
+            if (place && place.geometry) {
+              setDeliveryLat(place.geometry.location.lat());
+              setDeliveryLng(place.geometry.location.lng());
+              setAlternativeAddressInput(place.formatted_address || '');
               
-              // Calcular distancia si hay dirección de recogida
-              if (pickupAddress) {
-                calculateDistance(pickupAddress, place.formatted_address);
+              // Intentar llenar campos individuales si es posible
+              const components = place.address_components;
+              if (components) {
+                let street = '', number = '', suburb = '', city = '', state = '', postcode = '';
+                components.forEach((comp: any) => {
+                  const types = comp.types;
+                  if (types.includes('route')) street = comp.long_name;
+                  if (types.includes('street_number')) number = comp.long_name;
+                  if (types.includes('sublocality') || types.includes('neighborhood')) suburb = comp.long_name;
+                  if (types.includes('locality')) city = comp.long_name;
+                  if (types.includes('administrative_area_level_1')) state = comp.long_name;
+                  if (types.includes('postal_code')) postcode = comp.long_name;
+                });
+                
+                if (street) setStreet(street);
+                if (number) setHouseNumber(number);
+                if (suburb) setSuburb(suburb);
+                if (city) setCity(city);
+                if (state) setState(state);
+                if (postcode) setPostcode(postcode);
               }
+              console.log('✅ [ALTERNATIVA] Dirección seleccionada:', place.formatted_address);
             }
           });
-          console.log('✅ [ENTREGA] Autocomplete configurado');
         }
-        
-      } catch (err) {
-        console.error('❌ [GOOGLE MAPS] Error al cargar:', err);
       }
-    };
-    
-    loadGoogleMaps();
-  }, []); // Dependencia vacía = solo se ejecuta UNA VEZ
+    }
+  }, [isGoogleLoaded, useAlternativeAddress]);
 
-  // 🗺️ Calcular distancia entre dos direcciones (USANDO INSTANCIA YA CARGADA)
-  const calculateDistance = async (origin: string, destination: string) => {
-    if (!origin || !destination) {
-      console.warn('⚠️ [DISTANCIA] Faltan direcciones para calcular');
+  // Configurar autocompletado para dirección de entrega (nuevo)
+  useEffect(() => {
+    if (!isGoogleLoaded) {
+      console.log('⏳ [AUTOCOMPLETE] Esperando a que Google Maps cargue...');
       return;
     }
 
-    // Verificar si Google Maps ya está cargado
-    if (!googleInstance) {
-      console.warn('⚠️ [DISTANCIA] Google Maps no está cargado aún');
-      alert('⏳ Espere un momento mientras carga Google Maps...');
-      return;
-    }
-
-    setIsCalculating(true);
+    console.log('🔧 [AUTOCOMPLETE] isGoogleLoaded = true, intentando inicializar...');
     
-    try {
-      console.log('=== CALCULANDO DISTANCIA ===');
-      console.log('Recogida:', origin);
-      console.log('Entrega:', destination);
+    // Función para inicializar el autocompletado con reintentos
+    const initAutocomplete = (attempt: number = 0): boolean => {
+      const MAX_ATTEMPTS = 10;
       
-      // USAR la instancia ya cargada - NO crear nuevo Loader
-      const service = new googleInstance.maps.DistanceMatrixService();
+      if (attempt >= MAX_ATTEMPTS) {
+        console.error('❌ [AUTOCOMPLETE] Máximo de intentos alcanzado');
+        return false;
+      }
+
+      const deliveryInput = document.getElementById('delivery-destination-autocomplete') as HTMLInputElement;
       
-      service.getDistanceMatrix(
-        {
-          origins: [origin],
-          destinations: [destination],
-          travelMode: googleInstance.maps.TravelMode.DRIVING,
-          unitSystem: googleInstance.maps.UnitSystem.METRIC
-        },
-        (response: any, status: string) => {
-          setIsCalculating(false);
-          console.log('Estado Distance Matrix:', status);
-          console.log('Response:', response);
-          
-          if (status === 'OK' && response) {
-            const element = response.rows[0].elements[0];
-            
-            if (element.status === 'OK') {
-              const distanceMeters = element.distance?.value || 0;
-              const distanceKm = Math.round((distanceMeters / 1000) * 100) / 100;
-              setDistance(distanceKm);
-              
-              // Calcular precio automáticamente
-              const calculatedPrice = calculatePriceFromDistance(distanceKm);
-              setPrice(calculatedPrice);
-              
-              console.log('🗺️ [DISTANCIA]:', distanceKm, 'km');
-              console.log('💰 [PRECIO]: $' + calculatedPrice, 'MXN');
-            } else {
-              console.error('❌ [DISTANCIA] Error en elemento:', element.status);
-              alert('⚠️ No se pudo calcular la distancia. Verifica que ambas direcciones sean válidas.');
-            }
+      if (!deliveryInput) {
+        console.log(`⏳ [AUTOCOMPLETE] Intento ${attempt + 1}/${MAX_ATTEMPTS}: Input no encontrado, reintentando en 200ms...`);
+        setTimeout(() => initAutocomplete(attempt + 1), 200);
+        return false;
+      }
+
+      if (deliveryAutocompleteRef2.current) {
+        console.log('✅ [AUTOCOMPLETE] Ya está inicializado');
+        return true;
+      }
+
+      const google = (window as any).google;
+      if (!google || !google.maps || !google.maps.places) {
+        console.log(`⏳ [AUTOCOMPLETE] Intento ${attempt + 1}/${MAX_ATTEMPTS}: Google Maps no disponible, reintentando...`);
+        setTimeout(() => initAutocomplete(attempt + 1), 200);
+        return false;
+      }
+
+      try {
+        console.log('🎯 [AUTOCOMPLETE] Inicializando autocompletado...');
+        deliveryAutocompleteRef2.current = new google.maps.places.Autocomplete(deliveryInput, {
+          componentRestrictions: { country: 'mx' },
+          fields: ['geometry', 'formatted_address', 'address_components']
+        });
+        
+        deliveryAutocompleteRef2.current.addListener('place_changed', () => {
+          console.log('🎯 [DESTINO] Evento place_changed disparado');
+          const place = deliveryAutocompleteRef2.current?.getPlace();
+          if (place && place.geometry && place.geometry.location) {
+            console.log('✅ [DESTINO] Dirección seleccionada:', place.formatted_address);
+            console.log('✅ [DESTINO] Coordenadas:', place.geometry.location.lat(), place.geometry.location.lng());
+            setDeliveryAddressInput(place.formatted_address || '');
+            setDestLat(place.geometry.location.lat());
+            setDestLng(place.geometry.location.lng());
           } else {
-            console.error('❌ [DISTANCIA] Error:', status);
-            alert('⚠️ Error al calcular distancia: ' + status);
+            console.warn('⚠️ [DESTINO] Lugar seleccionado sin geometría');
           }
-        }
-      );
-    } catch (err) {
-      setIsCalculating(false);
-      console.error('❌ [DISTANCIA] Error al calcular:', err);
-      alert('❌ Error al calcular la distancia. Revisa tu conexión a internet.');
-    }
-  };
+        });
+        
+        console.log('✅ [AUTOCOMPLETE] Inicializado correctamente en intento', attempt + 1);
+        return true;
+      } catch (err) {
+        console.error('❌ [AUTOCOMPLETE] Error al inicializar:', err);
+        setTimeout(() => initAutocomplete(attempt + 1), 200);
+        return false;
+      }
+      
+      return false;
+    };
 
-  // 💰 Calcular precio basado en la distancia (TABLA DE TARIFAS)
-  const calculatePriceFromDistance = (distanceKm: number): number => {
-    let price = 0;
+    // Iniciar inicialización con reintentos
+    const success = initAutocomplete(0);
     
-    if (distanceKm <= 0.1) {
-      // Hasta 100 metros
-      price = 30;
-    } else if (distanceKm <= 1) {
-      // Hasta 1 km
-      price = 30;
-    } else if (distanceKm <= 2) {
-      // Hasta 2 km
-      price = 35;
-    } else if (distanceKm <= 2.5) {
-      // Hasta 2.5 km
-      price = 40;
-    } else if (distanceKm <= 3) {
-      // Hasta 3 km
-      price = 45;
-    } else if (distanceKm <= 5) {
-      // Hasta 5 km
-      price = 50;
-    } else {
-      // Más de 5 km: $50 + $5 por cada km adicional
-      const additionalKm = distanceKm - 5;
-      const additionalCost = Math.ceil(additionalKm) * 5;
-      price = 50 + additionalCost;
+    if (!success) {
+      console.log('⏳ [AUTOCOMPLETE] Inicialización en proceso con reintentos automáticos...');
     }
-    
-    return price;
-  };
+  }, [isGoogleLoaded]);
 
-  // 🗺️ Manejar cálculo inicial de ruta (SOLO destino -> calcula desde ubicación actual)
+  // 🗺️ Calcular ruta y tarifa
   const handleCalculateRoute = async () => {
     if (!deliveryAddressInput) {
       alert('⚠️ Por favor escribe tu destino');
       return;
     }
 
-    if (!googleInstance) {
-      alert('⏳ Espere un momento mientras carga Google Maps...');
+    if (deliveryLat === null || deliveryLng === null) {
+      alert('⚠️ Primero selecciona tu ubicación actual en el mapa de arriba');
       return;
+    }
+
+    // Usar coordenadas del autocompletado si están disponibles, sino geocodificar
+    let finalDestLat = destLat;
+    let finalDestLng = destLng;
+    
+    if (finalDestLat === null || finalDestLng === null) {
+      console.log('⚠️ [RUTA] No hay coordenadas del autocompletado, intentando geocodificar...');
+      
+      setIsCalculatingRoute(true);
+      
+      try {
+        const geocodeResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(deliveryAddressInput)}&limit=1&countrycodes=mx`,
+          {
+            headers: {
+              'User-Agent': 'MiAppDelivery/1.0'
+            }
+          }
+        );
+        
+        const geocodeData = await geocodeResponse.json();
+        
+        console.log('Respuesta de geocodificación:', geocodeData);
+        
+        if (!geocodeData || geocodeData.length === 0) {
+          setIsCalculatingRoute(false);
+          alert('❌ No se pudo encontrar la dirección: ' + deliveryAddressInput + '\n\nIntenta con una dirección más específica.\nEjemplo: "Calle Maclovio Herrera 305, Fresnillo, Zacatecas"');
+          return;
+        }
+        
+        finalDestLat = parseFloat(geocodeData[0].lat);
+        finalDestLng = parseFloat(geocodeData[0].lon);
+        
+        console.log('Coordenadas destino (geocoding):', { lat: finalDestLat, lng: finalDestLng });
+      } catch (err) {
+        setIsCalculatingRoute(false);
+        console.error('❌ [RUTA] Error en geocodificación:', err);
+        alert('❌ Error al buscar la dirección. Intenta de nuevo.');
+        return;
+      }
+    } else {
+      console.log('✅ [RUTA] Usando coordenadas del autocompletado:', { lat: finalDestLat, lng: finalDestLng });
     }
 
     setIsCalculatingRoute(true);
     
     try {
-      console.log('=== CALCULANDO RUTA DESDE UBICACIÓN ACTUAL ===');
+      console.log('=== CALCULANDO RUTA ===');
+      console.log('Origen:', { lat: deliveryLat, lng: deliveryLng });
       console.log('Destino:', deliveryAddressInput);
+      console.log('Coordenadas destino:', { lat: finalDestLat, lng: finalDestLng });
       
-      // Obtener coordenadas actuales del usuario si no las tenemos
-      if (deliveryLat === null || deliveryLng === null) {
-        console.log('🛰️ Obteniendo ubicación del usuario...');
-        
-        await new Promise<void>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              setDeliveryLat(position.coords.latitude);
-              setDeliveryLng(position.coords.longitude);
-              console.log('✅ Ubicación obtenida:', position.coords.latitude, position.coords.longitude);
-              resolve();
-            },
-            (error) => {
-              console.error('❌ Error al obtener ubicación:', error);
-              alert('⚠️ No se pudo obtener tu ubicación. Por favor permite el acceso al GPS.');
-              setIsCalculatingRoute(false);
-              reject(error);
-            },
-            {
-              enableHighAccuracy: true,
-              timeout: 15000,
-              maximumAge: 0
-            }
-          );
-        });
-      }
+      // Calcular distancia usando fórmula Haversine
+      const distance = calculateDistance(deliveryLat, deliveryLng, finalDestLat!, finalDestLng!);
       
-      // Esperar a que los campos de dirección se llenen (máximo 5 segundos)
-      let waitForFields = 0;
-      while ((!street || !city) && waitForFields < 50) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        waitForFields++;
-      }
+      console.log('Distancia calculada:', distance, 'km');
       
-      // Verificar que los campos se hayan llenado
-      if (!street || !city) {
-        console.warn('⚠️ Los campos de dirección no se llenaron automáticamente');
-        // Llenar manualmente con valores por defecto si es necesario
-        if (!street) setStreet('Calle Principal');
-        if (!houseNumber) setHouseNumber('S/N');
-        if (!suburb) setSuburb('Centro');
-        if (!city) setCity('Fresnillo');
-        if (!state) setState('Zacatecas');
-        if (!postcode) setPostcode('99010');
-      }
+      // Calcular tarifa según tabla de precios
+      const price = calculatePriceFromDistance(distance);
       
-      console.log('✅ Campos de dirección verificados:', { street, houseNumber, city });
+      console.log('Tarifa calculada:', price, 'MXN');
       
-      // Calcular distancia
-      calculateDistanceFromCurrentLocation(deliveryAddressInput);
+      // Guardar resultados
+      setDistance(distance);
+      setPrice(price);
+      
+      setIsCalculatingRoute(false);
+      
     } catch (err) {
       setIsCalculatingRoute(false);
-      console.error('❌ [RUTA] Error al calcular:', err);
-      alert('❌ Error al calcular la ruta.');
+      console.error('❌ [RUTA] Error:', err);
+      alert('❌ Error al calcular la ruta. Intenta de nuevo.');
     }
   };
 
-  // 🗺️ Calcular distancia desde ubicación actual hasta el destino
-  const calculateDistanceFromCurrentLocation = async (destination: string) => {
-    if (!googleInstance || deliveryLat === null || deliveryLng === null) {
-      console.warn('⚠️ Faltan datos para calcular');
-      return;
-    }
+  // Fórmula Haversine para calcular distancia entre dos puntos
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    
+    return Math.round(distance * 100) / 100; // Redondear a 2 decimales
+  };
 
-    try {
-      const service = new googleInstance.maps.DistanceMatrixService();
-      
-      // Usar coordenadas actuales como origen
-      const origin = `${deliveryLat},${deliveryLng}`;
-      
-      console.log('Origen (coordenadas):', origin);
-      console.log('Destino:', destination);
-      
-      service.getDistanceMatrix(
-        {
-          origins: [origin],
-          destinations: [destination],
-          travelMode: googleInstance.maps.TravelMode.DRIVING,
-          unitSystem: googleInstance.maps.UnitSystem.METRIC
-        },
-        (response: any, status: string) => {
-          setIsCalculatingRoute(false);
-          console.log('Estado Distance Matrix:', status);
-          
-          if (status === 'OK' && response) {
-            const element = response.rows[0].elements[0];
-            
-            if (element.status === 'OK') {
-              const distanceMeters = element.distance?.value || 0;
-              const distanceKm = Math.round((distanceMeters / 1000) * 100) / 100;
-              setDistance(distanceKm);
-              
-              // Calcular precio automáticamente
-              const calculatedPrice = calculatePriceFromDistance(distanceKm);
-              setPrice(calculatedPrice);
-              
-              console.log('🗺️ [DISTANCIA]:', distanceKm, 'km');
-              console.log('💰 [PRECIO]: $' + calculatedPrice, 'MXN');
-              
-              // Mostrar resultado y botón de confirmar
-              setShowDestinationSection(true);
-            } else {
-              console.error('❌ [DISTANCIA] Error en elemento:', element.status);
-              alert('⚠️ No se pudo calcular la distancia. Verifica que el destino sea válido.');
-            }
-          } else {
-            console.error('❌ [DISTANCIA] Error:', status);
-            alert('⚠️ Error al calcular distancia: ' + status);
-          }
-        }
-      );
-    } catch (err) {
-      console.error('❌ [DISTANCIA] Error al calcular:', err);
-      alert('❌ Error al calcular la distancia.');
+  const deg2rad = (deg: number): number => {
+    return deg * (Math.PI / 180);
+  };
+
+  // Tabla de precios según distancia
+  const calculatePriceFromDistance = (distanceKm: number): number => {
+    if (distanceKm <= 0.1) return 30;      // 0.1 km o menos
+    if (distanceKm <= 1) return 30;        // hasta 1 km
+    if (distanceKm <= 2) return 35;        // hasta 2 km
+    if (distanceKm <= 2.5) return 40;      // hasta 2.5 km
+    if (distanceKm <= 3) return 45;        // hasta 3 km
+    if (distanceKm <= 5) return 50;        // hasta 5 km
+    
+    // Para distancias mayores a 5 km, agregar $5 por cada km adicional
+    const kmAdicionales = Math.ceil(distanceKm - 5);
+    return 50 + (kmAdicionales * 5);
+  };
+
+  // Manejar cambio de casilla "Es otra dirección"
+  const handleAlternativeAddressToggle = (checked: boolean) => {
+    setUseAlternativeAddress(checked);
+    if (checked) {
+      // Limpiar campos manuales para evitar confusión
+      setStreet('');
+      setHouseNumber('');
+      setSuburb('');
+      setCity('');
+      setState('');
+      setPostcode('');
+      setDeliveryLat(null);
+      setDeliveryLng(null);
+    } else {
+      // Si desactiva, limpiar la alternativa
+      setAlternativeAddressInput('');
+      setDeliveryLat(null);
+      setDeliveryLng(null);
     }
   };
 
@@ -491,36 +458,15 @@ const MotorcycleServicePage: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    console.log('🔍 [VALIDACIÓN] Verificando campos antes de crear pedido...');
-    console.log('   street:', street);
-    console.log('   houseNumber:', houseNumber);
-    console.log('   suburb:', suburb);
-    console.log('   city:', city);
-    console.log('   state:', state);
-    console.log('   postcode:', postcode);
+    // Validar campos obligatorios de dirección
+    if (!useAlternativeAddress && (!street || !houseNumber || !suburb || !city || !state || !postcode)) {
+      setError('Por favor completa todos los campos de dirección (Calle, Número, Colonia, Ciudad, Estado, Código Postal)');
+      return;
+    }
 
-    // Validar campos obligatorios de dirección (IGUAL QUE CREATE ORDER PAGE)
-    if (!street || !houseNumber || !suburb || !city || !state || !postcode) {
-      console.warn('⚠️ [VALIDACIÓN] Faltan campos de dirección, usando valores por defecto...');
-      
-      // Usar valores por defecto si algunos campos están vacíos (IGUAL QUE CREATE ORDER PAGE)
-      if (!street) setStreet('Calle Principal');
-      if (!houseNumber) setHouseNumber('S/N');
-      if (!suburb) setSuburb('Centro');
-      if (!city) setCity('Fresnillo');
-      if (!state) setState('Zacatecas');
-      if (!postcode) setPostcode('99010');
-      
-      console.log('✅ [VALIDACIÓN] Campos completados con valores por defecto:', { 
-        street: street || 'Calle Principal', 
-        houseNumber: houseNumber || 'S/N', 
-        suburb: suburb || 'Centro', 
-        city: city || 'Fresnillo', 
-        state: state || 'Zacatecas', 
-        postcode: postcode || '99010' 
-      });
-    } else {
-      console.log('✅ [VALIDACIÓN] Todos los campos de dirección están completos');
+    if (useAlternativeAddress && !alternativeAddressInput) {
+      setError('Por favor selecciona una dirección de entrega usando el autocompletado de Google Maps');
+      return;
     }
 
     // Validar coordenadas obligatorias
@@ -532,16 +478,16 @@ const MotorcycleServicePage: React.FC = () => {
     setLoading(true);
 
     try {
-      const clientId = AuthService.getClientId();
+      // Si no hay clientId (usuario sin sesión), generar uno automático basado en timestamp
+      let clientId = AuthService.getClientId();
       
       if (!clientId) {
-        console.error('❌ No hay clientId en localStorage');
-        setError('Error: No se encontró el ID del cliente. Intenta iniciar sesión nuevamente.');
-        setLoading(false);
-        return;
+        // Generar clientId automático para usuarios sin cuenta
+        clientId = Date.now().toString();
+        console.log('ℹ️ Usuario sin cuenta, generando clientId automático:', clientId);
+      } else {
+        console.log('✅ Cliente autenticado:', clientId);
       }
-      
-      console.log('✅ Cliente encontrado:', clientId);
 
       // Coordenadas por defecto (Fresnillo, Zacatecas)
       const defaultLat = 24.6536;
@@ -551,12 +497,22 @@ const MotorcycleServicePage: React.FC = () => {
       const lat = deliveryLat !== null ? deliveryLat : defaultLat;
       const lng = deliveryLng !== null ? deliveryLng : defaultLng;
 
+      // Formatear el campo items con las direcciones de origen y destino
+      const origenAddress = `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`;
+      const destinoAddress = deliveryAddressInput || 'Por definir';
+      
+      const itemsFormatted = `Servicio de Motocicleta
+🚩 Origen: ${origenAddress}
+🏁 Destino: ${destinoAddress}
+${items ? `📝 Descripción: ${items}` : ''}`;
+
       const orderData = {
         clientId,
         clientName,
         clientPhone,
-        // Construir dirección completa con todos los campos (IGUAL QUE CREATE ORDER PAGE)
-        clientAddress: `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
+        clientEmail,
+        // Construir dirección completa con todos los campos (ORIGEN)
+        clientAddress: origenAddress,
         clientLocation: {
           latitude: lat,
           longitude: lng
@@ -564,40 +520,29 @@ const MotorcycleServicePage: React.FC = () => {
         serviceType: 'MOTORCYCLE_TAXI',
         status: 'PENDING',
         createdAt: Date.now(),
-        // 🚩 Punto de Partida (Recogida) - Usar pickupAddress de Google Maps
-        pickupAddress: pickupAddress || `${street}${houseNumber ? ' #' + houseNumber : ''}${suburb ? ', ' + suburb : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''}${postcode ? ', ' + postcode : ''}`,
-        // 🏁 Dirección de Entrega - Usar deliveryAddressInput (lo que escribió el usuario)
-        deliveryAddress: deliveryAddressInput || 'Por definir',
+        // Dirección de DESTINO (la que escribió el usuario)
+        pickupAddress: origenAddress,
+        deliveryAddress: destinoAddress,
         deliveryLocation: {
-          latitude: lat,
-          longitude: lng
+          latitude: destLat !== null ? destLat : lat,
+          longitude: destLng !== null ? destLng : lng
         },
-        // Items - Estructura idéntica a CreateOrderPage
-        items: `Servicio de Motocicleta (Taxi)\n🚩 Origen: ${pickupAddress || 'Ubicación actual'}\n🏁 Destino: ${deliveryAddressInput || 'Por definir'}\n${items ? '📝 Descripción: ' + items : ''}`,
-        // Distancia y precio calculados
-        distance: distance ?? undefined,
-        deliveryCost: price ?? 30, // Guardar el precio calculado como costo de entrega
-        // Notas adicionales con precio
-        notes: `Servicio de motocicleta - Viaje rápido y seguro. Distancia: ${distance || 'N/A'} km. Tarifa: $${price || 'N/A'} MXN`
+        items: itemsFormatted,
+        notes: `Servicio de motocicleta - Viaje rápido y seguro`,
+        distance: distance || undefined,
+        deliveryCost: price || undefined
       };
 
-      console.log('📦 Creando pedido de motocicleta con datos:', {
-        clientId,
-        clientName,
-        serviceType: 'MOTORCYCLE_TAXI',
-        hasItems: !!items,
-        orderData
-      });
+      console.log('📦 Creando pedido de motocicleta:', orderData);
 
       try {
         const orderId = await OrderService.createOrder(orderData);
         
-        console.log('✅ Pedido de motocicleta creado:', orderId);
+        console.log('✅ Pedido creado:', orderId);
 
         if (orderId) {
           alert('✅ Solicitud de viaje creada exitosamente\n\nNúmero de pedido: ' + orderId.slice(-6));
-          // Redirigir a la página de seguimiento específica para motocicleta
-          navigate(`/seguimiento-motocicleta/${orderId}`);
+          navigate(`/seguimiento?pedido=${orderId}`);
         } else {
           console.error('❌ OrderService retornó null');
           setError('Error al crear la solicitud de viaje. Intenta de nuevo.');
@@ -618,12 +563,12 @@ const MotorcycleServicePage: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#eff6ff',
+      backgroundColor: '#f3f4f6',
       padding: '1rem'
     }}>
       {/* Header */}
       <header style={{
-        backgroundColor: '#3b82f6',
+        backgroundColor: '#667eea',
         color: 'white',
         padding: '1rem',
         borderRadius: '0.5rem',
@@ -661,485 +606,511 @@ const MotorcycleServicePage: React.FC = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
           
-          {/* SECCIÓN 1: ¿Cuál es tu destino? - PANTALLA INICIAL */}
-          {!showDestinationSection && !showFullForm ? (
-            <section style={{ marginBottom: '2rem', textAlign: 'center' }}>
-              <div style={{
-                padding: '2rem 1rem',
-                backgroundColor: '#f0fdf4',
-                borderRadius: '1rem',
-                border: '2px solid #10b981'
-              }}>
-                <h2 style={{
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  color: '#047857',
-                  marginBottom: '1.5rem'
-                }}>
-                  🎯 ¿Cuál es tu destino?
-                </h2>
+          {/* SECCIÓN 0: Información del Cliente */}
+          <section style={{ marginBottom: '2rem' }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: '#667eea',
+              marginBottom: '1.5rem',
+              borderBottom: '3px solid #667eea',
+              paddingBottom: '0.75rem'
+            }}>
+              👤 Información del Cliente
+            </h2>
 
-                {/* UBICACIÓN ACTUAL - Solo lectura */}
-                {(street && houseNumber) && (
-                  <div style={{
-                    marginBottom: '1.5rem',
-                    padding: '1.25rem',
-                    backgroundColor: '#eff6ff',
-                    borderRadius: '0.75rem',
-                    border: '2px solid #3b82f6'
-                  }}>
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={labelStyle}>👤 Nombre Completo *</label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej: Juan Pérez García"
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>📞 Teléfono *</label>
+                <input
+                  type="tel"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej: 4921234567"
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>📧 Correo Electrónico *</label>
+                <input
+                  type="email"
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Ej: juan@correo.com"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* SECCIÓN 1: Dirección de Entrega (con mapa) - AHORA PRIMERO */}
+          <section style={{ marginBottom: '2rem' }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: '#1f2937',
+              marginBottom: '1rem',
+              borderBottom: '3px solid #10b981',
+              paddingBottom: '0.75rem'
+            }}>
+              📍 Dirección de Entrega
+            </h2>
+
+            {/* Casilla "Es otra dirección diferente" */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={useAlternativeAddress}
+                  onChange={(e) => handleAlternativeAddressToggle(e.target.checked)}
+                  style={{ width: '20px', height: '20px' }}
+                />
+                <span style={{ fontWeight: '600', color: '#374151' }}>¿Es otra dirección diferente a mi ubicación actual?</span>
+              </label>
+            </div>
+
+            {!useAlternativeAddress ? (
+              /* Campos manuales originales - OCULTOS PERO FUNCIONALES */
+              <>
+                <div style={{ display: 'none' }}>
+                  <div>
+                    <label style={labelStyle}>🏠 Calle *</label>
+                    <input
+                      type="text"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Av. Hidalgo"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>🔢 Número *</label>
+                    <input
+                      type="text"
+                      value={houseNumber}
+                      onChange={(e) => setHouseNumber(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. 123"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>🏘️ Colonia *</label>
+                    <input
+                      type="text"
+                      value={suburb}
+                      onChange={(e) => setSuburb(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Centro"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>🏙️ Ciudad *</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Fresnillo"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>📍 Estado *</label>
+                    <input
+                      type="text"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. Zacatecas"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>📬 Código Postal *</label>
+                    <input
+                      type="text"
+                      value={postcode}
+                      onChange={(e) => setPostcode(e.target.value)}
+                      required={!useAlternativeAddress}
+                      style={inputStyle}
+                      placeholder="Ej. 99000"
+                    />
+                  </div>
+                </div>
+
+                {/* Confirmación de Dirección - Mensaje Verde - OCULTO */}
+                {(street && houseNumber && suburb && city && state && postcode) && (
+                  <div style={{ display: 'none' }}>
                     <p style={{
-                      fontSize: '0.875rem',
-                      color: '#1e40af',
+                      fontSize: '1.1rem',
                       fontWeight: 'bold',
-                      margin: '0 0 0.5rem 0'
+                      color: '#065f46',
+                      margin: 0,
+                      lineHeight: '1.5'
                     }}>
-                      📍 Tu Ubicación Actual:
+                      ✅ ¡TU DIRECCIÓN ES:
                     </p>
                     <p style={{
-                      fontSize: '1.125rem',
-                      color: '#1e40af',
-                      fontWeight: '600',
-                      margin: 0
+                      fontSize: '1rem',
+                      color: '#047857',
+                      margin: '0.75rem 0 0 0',
+                      fontWeight: '600'
                     }}>
-                      {street} #{houseNumber}
-                      {suburb && `, ${suburb}`}
-                      {city && `, ${city}`}
-                      {state && `, ${state}`}
-                      {postcode && ` ${postcode}`}
+                      {street} #{houseNumber}, {suburb}
+                      <br />
+                      {city}, {state} {postcode}
                     </p>
                   </div>
                 )}
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={labelStyle}>🏁 Dirección de Entrega:</label>
-                  <input
-                    type="text"
-                    id="delivery-autocomplete"
-                    value={deliveryAddressInput}
-                    onChange={(e) => setDeliveryAddressInput(e.target.value)}
-                    style={inputStyle}
-                    placeholder="Ej: Juana Gallo, Fresnillo, Zac."
-                    disabled={!isGoogleLoaded}
-                  />
-                  {isGoogleLoaded && (
-                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
-                      ✨ Escribe y selecciona una dirección sugerida
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCalculateRoute}
-                  disabled={!deliveryAddressInput || isCalculatingRoute}
-                  style={{
-                    width: '100%',
-                    padding: '1.25rem',
-                    backgroundColor: (!deliveryAddressInput) ? '#9ca3af' : isCalculatingRoute ? '#fbbf24' : '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontWeight: 'bold',
-                    fontSize: '1.25rem',
-                    cursor: (!deliveryAddressInput) ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  {isCalculatingRoute ? (
-                    <>
-                      <span>⏳</span>
-                      <span>Calculando tu ruta...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>🗺️</span>
-                      <span>Calcular Ruta y Tarifa</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </section>
-          ) : !showFullForm ? (
-            /* SECCIÓN 2: Resultado del cálculo */
-            <section style={{ marginBottom: '2rem' }}>
-              <div style={{
-                padding: '2rem 1rem',
-                backgroundColor: '#d1fae5',
-                borderRadius: '1rem',
-                border: '2px solid #10b981',
-                textAlign: 'center',
-                marginBottom: '1.5rem'
-              }}>
-                <p style={{ 
-                  fontSize: '1.25rem', 
-                  fontWeight: 'bold', 
-                  color: '#065f46',
-                  margin: '0 0 1rem 0'
-                }}>
-                  ✅ ¡Ruta calculada!
-                </p>
-                
-                <div style={{ 
-                  fontSize: '2.5rem', 
-                  fontWeight: 'bold', 
-                  color: '#047857',
-                  margin: '1.5rem 0',
-                  padding: '1.5rem',
-                  backgroundColor: 'white',
-                  borderRadius: '0.75rem',
-                  border: '2px dashed #10b981'
-                }}>
-                  💰 ${price} MXN
-                </div>
-                
-                <p style={{ 
-                  fontSize: '1rem', 
-                  color: '#059669',
-                  margin: '0 0 1.5rem 0'
-                }}>
-                  🗺️ Distancia: {distance} km
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => setShowFullForm(true)}
-                  style={{
-                    width: '100%',
-                    padding: '1.25rem',
-                    backgroundColor: '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontWeight: 'bold',
-                    fontSize: '1.25rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  ✅ Confirmar Pedido
-                </button>
-              </div>
-            </section>
-          ) : null}
-
-          {/* SECCIÓN 3: Formulario completo (solo después de confirmar) */}
-          {showFullForm && (
-            <>
-              {/* Datos del pasajero - OCULTOS (YA LOS TENEMOS) */}
-              <section style={{ display: 'none', marginBottom: '2rem' }}>
-                <h2 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'bold',
-                  color: '#1f2937',
-                  marginBottom: '1rem',
-                  borderBottom: '2px solid #3b82f6',
-                  paddingBottom: '0.5rem'
-                }}>
-                  👤 Datos del Pasajero
-                </h2>
-
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-                  <div>
-                    <label style={labelStyle}>Nombre completo *</label>
-                    <input
-                      type="text"
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="Juan Pérez"
-                    />
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>Teléfono *</label>
-                    <input
-                      type="tel"
-                      value={clientPhone}
-                      onChange={(e) => setClientPhone(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="492 123 4567"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              {/* Información del Servicio - Oculta pero necesaria */}
-              <section style={{ display: 'none', marginBottom: '2rem' }}>
-                <h2 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'bold',
-                  color: '#1f2937',
-                  marginBottom: '1rem',
-                  borderBottom: '2px solid #f59e0b',
-                  paddingBottom: '0.5rem'
-                }}>
-                  🏍️ Detalles del Viaje
-                </h2>
-
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>🚩 Dirección de Recogida:</label>
-                    <input
-                      type="text"
-                      id="pickup-autocomplete"
-                      value={pickupAddress}
-                      onChange={(e) => setPickupAddress(e.target.value)}
-                      style={inputStyle}
-                      placeholder="Ej: Av. Hidalgo, Fresnillo, Zac."
-                      disabled={!isGoogleLoaded}
-                    />
-                    {isGoogleLoaded && (
-                      <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
-                        ✨ Escribe y selecciona una dirección sugerida
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>📝 Instrucciones adicionales (opcional)</label>
-                    <textarea
-                      value={items}
-                      onChange={(e) => setItems(e.target.value)}
-                      style={{ ...inputStyle, minHeight: '80px' }}
-                      placeholder="Ej: Destino: Universidad Autónoma, llevar casco extra, pasar por Starbucks, etc."
-                    />
-                  </div>
-                </div>
-              </section>
-
-              {/* Dirección de Entrega */}
-              <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'bold',
-                  color: '#1f2937',
-                  marginBottom: '1rem',
-                  borderBottom: '2px solid #10b981',
-                  paddingBottom: '0.5rem'
-                }}>
-                  📋 Resumen del Pedido
-                </h2>
-                
-                {/* Campos de dirección - OCULTOS PERO FUNCIONALES (SOLO para autocompletado) */}
-                <div style={{ display: 'none' }}>
-                  <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
-                    <div>
-                      <label style={labelStyle}>🏠 Calle *</label>
-                      <input
-                        type="text"
-                        value={street}
-                        onChange={(e) => setStreet(e.target.value)}
-                        required
-                        style={inputStyle}
-                        placeholder="Ej. Av. Hidalgo"
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>🔢 Número *</label>
-                      <input
-                        type="text"
-                        value={houseNumber}
-                        onChange={(e) => setHouseNumber(e.target.value)}
-                        required
-                        style={inputStyle}
-                        placeholder="Ej. 123"
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>🏘️ Colonia *</label>
-                      <input
-                        type="text"
-                        value={suburb}
-                        onChange={(e) => setSuburb(e.target.value)}
-                        required
-                        style={inputStyle}
-                        placeholder="Ej. Centro"
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>🏙️ Ciudad *</label>
-                      <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        required
-                        style={inputStyle}
-                        placeholder="Ej. Fresnillo"
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>📍 Estado *</label>
-                      <input
-                        type="text"
-                        value={state}
-                        onChange={(e) => setState(e.target.value)}
-                        required
-                        style={inputStyle}
-                        placeholder="Ej. Zacatecas"
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>📬 Código Postal *</label>
-                      <input
-                        type="text"
-                        value={postcode}
-                        onChange={(e) => setPostcode(e.target.value)}
-                        required
-                        style={inputStyle}
-                        placeholder="Ej. 99000"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Coordenadas GPS - OCULTAS PERO FUNCIONALES */}
+                {/* Coordenadas GPS - OCULTAS */}
                 {(deliveryLat !== null || deliveryLng !== null) && (
                   <div style={{ display: 'none' }}>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: '1rem',
-                      marginBottom: '1rem',
-                      padding: '1rem',
-                      backgroundColor: '#eff6ff',
-                      borderRadius: '0.5rem',
-                      border: '1px solid #bfdbfe'
-                    }}>
-                      <div>
-                        <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                          🌎 Latitud
-                        </label>
-                        <input
-                          type="text"
-                          value={deliveryLat !== null ? deliveryLat.toString() : ''}
-                          readOnly
-                          style={{
-                            ...inputStyle,
-                            backgroundColor: '#dbeafe',
-                            border: '1px solid #93c5fd',
-                            fontWeight: '600',
-                            color: '#1e40af'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                          🧭 Longitud
-                        </label>
-                        <input
-                          type="text"
-                          value={deliveryLng !== null ? deliveryLng.toString() : ''}
-                          readOnly
-                          style={{
-                            ...inputStyle,
-                            backgroundColor: '#dbeafe',
-                            border: '1px solid #93c5fd',
-                            fontWeight: '600',
-                            color: '#1e40af'
-                          }}
-                        />
-                      </div>
+                    <div>
+                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                        🌎 Latitud
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryLat !== null ? deliveryLat.toString() : ''}
+                        readOnly
+                        style={{
+                          ...inputStyle,
+                          backgroundColor: '#dbeafe',
+                          border: '1px solid #93c5fd',
+                          fontWeight: '600',
+                          color: '#1e40af'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                        🧭 Longitud
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryLng !== null ? deliveryLng.toString() : ''}
+                        readOnly
+                        style={{
+                          ...inputStyle,
+                          backgroundColor: '#dbeafe',
+                          border: '1px solid #93c5fd',
+                          fontWeight: '600',
+                          color: '#1e40af'
+                        }}
+                      />
                     </div>
                   </div>
                 )}
-                
-                {/* Resumen visible - IGUAL QUE ANTES */}
-                <div style={{
-                  padding: '1.5rem',
-                  backgroundColor: '#f0fdf4',
-                  borderRadius: '0.75rem',
-                  border: '1px solid #bbf7d0',
-                  marginBottom: '1rem'
-                }}>
-                  <p style={{ 
-                    fontSize: '0.875rem', 
-                    color: '#166534',
-                    margin: '0 0 1rem 0',
-                    lineHeight: '1.6'
-                  }}>
-                    💡 <strong>Importante:</strong> La dirección de recogida se tomará automáticamente de tu ubicación GPS actual.
-                  </p>
-                  
-                  <div style={{ marginBottom: '1rem' }}>
-                    <p style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      🚩 Punto de Partida:
-                    </p>
-                    <p style={{ fontSize: '0.875rem', color: '#047857', margin: 0 }}>
-                      📍 Ubicación actual
-                    </p>
-                    {/* Mostrar dirección completa si está disponible */}
-                    {(street && houseNumber && city) && (
-                      <p style={{ fontSize: '1rem', color: '#065f46', fontWeight: '600', margin: '0.5rem 0 0 0' }}>
-                        {street} #{houseNumber}, {suburb}
-                        <br />
-                        {city}, {state} {postcode}
-                      </p>
-                    )}
-                  </div>
 
-                  <div style={{ marginBottom: '1rem' }}>
-                    <p style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      🏁 DESTINO:
-                    </p>
-                    <p style={{ fontSize: '1rem', color: '#065f46', fontWeight: '600', margin: 0 }}>
-                      {deliveryAddressInput}
-                    </p>
-                  </div>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
+                  ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
+                </p>
 
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      💰 TARIFA:
-                    </p>
-                    <p style={{ fontSize: '1.5rem', color: '#047857', fontWeight: 'bold', margin: 0 }}>
-                      ${price} MXN
-                    </p>
-                  </div>
-                </div>
-
-                {/* Componente de búsqueda de dirección con mapa - OCULTO PERO FUNCIONAL */}
-                <div style={{ display: 'none' }}>
-                  <AddressSearchWithMap
-                    onAddressSelect={(data) => {
-                      setDeliveryLat(data.lat);
-                      setDeliveryLng(data.lng);
-                      setStreet(data.street);
-                      setHouseNumber(data.houseNumber);
-                      setSuburb(data.suburb);
-                      setCity(data.city);
-                      setState(data.state);
-                      setPostcode(data.postcode);
-                    }}
-                  />
-                </div>
-
-                {/* Botón Submit */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    width: '100%',
-                    padding: '1.25rem',
-                    backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontWeight: 'bold',
-                    fontSize: '1.25rem',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                {/* Componente de búsqueda de dirección con mapa */}
+                <AddressSearchWithMap
+                  onAddressSelect={(data) => {
+                    setDeliveryLat(data.lat);
+                    setDeliveryLng(data.lng);
+                    setStreet(data.street);
+                    setHouseNumber(data.houseNumber);
+                    setSuburb(data.suburb);
+                    setCity(data.city);
+                    setState(data.state);
+                    setPostcode(data.postcode);
                   }}
-                >
-                  {loading ? '⏳ Creando Pedido...' : '🏍️ Confirmar y Solicitar Viaje'}
-                </button>
-              </section>
-            </>
+                />
+              </>
+            ) : (
+              /* Nueva interfaz de búsqueda estilo motocicleta */
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={labelStyle}>🏁 Escribe tu dirección de entrega:</label>
+                  <input
+                    type="text"
+                    id="alternative-delivery-autocomplete"
+                    value={alternativeAddressInput}
+                    onChange={(e) => setAlternativeAddressInput(e.target.value)}
+                    required={useAlternativeAddress}
+                    style={inputStyle}
+                    placeholder="Ej: Juana Gallo, Fresnillo, Zac."
+                  />
+                  {isGoogleLoaded ? (
+                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
+                      ✨ Escribe y selecciona una dirección sugerida por Google Maps
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' }}>
+                      ⚠️ Escribe tu dirección manualmente (Google Maps no disponible)
+                    </p>
+                  )}
+                </div>
+
+                {/* Mapa visualizador de la dirección seleccionada */}
+                {deliveryLat && deliveryLng && (
+                  <div style={{
+                    marginTop: '1.5rem',
+                    padding: '1.25rem',
+                    backgroundColor: '#d1fae5',
+                    borderRadius: '0.5rem',
+                    border: '2px solid #10b981',
+                    textAlign: 'center'
+                  }}>
+                    <p style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 'bold',
+                      color: '#065f46',
+                      margin: 0,
+                      lineHeight: '1.5'
+                    }}>
+                      ✅ ¡TU DIRECCIÓN ES:
+                    </p>
+                    <p style={{
+                      fontSize: '1rem',
+                      color: '#047857',
+                      margin: '0.75rem 0 0 0',
+                      fontWeight: '600'
+                    }}>
+                      {alternativeAddressInput || `${street} ${houseNumber}, ${suburb}`}
+                      <br />
+                      {city}, {state} {postcode}
+                    </p>
+                    <div style={{ marginTop: '1rem', height: '200px', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        scrolling="no"
+                        marginHeight={0}
+                        marginWidth={0}
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${deliveryLng - 0.005},${deliveryLat - 0.005},${deliveryLng + 0.005},${deliveryLat + 0.005}&layer=mapnik&marker=${deliveryLat},${deliveryLng}`}
+                        style={{ border: '1px solid #ccc' }}
+                      ></iframe>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.5rem' }}>
+                      📍 Punto exacto en el mapa
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* SECCIÓN 2: ¿Cuál es tu destino? */}
+          <section style={{ marginBottom: '2rem' }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: '#667eea',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              borderBottom: '3px solid #667eea',
+              paddingBottom: '0.75rem'
+            }}>
+              🎯 ¿Cuál es tu destino?
+            </h2>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ ...labelStyle, fontSize: '1rem', fontWeight: 'bold' }}>🏁 Dirección de Entrega:</label>
+              <input
+                type="text"
+                id="delivery-destination-autocomplete"
+                value={deliveryAddressInput}
+                onChange={(e) => setDeliveryAddressInput(e.target.value)}
+                style={{ ...inputStyle, fontSize: '1.1rem', padding: '1rem' }}
+                placeholder="Ej: Juana Gallo, Fresnillo, Zac."
+              />
+              {isGoogleLoaded ? (
+                <p style={{ fontSize: '0.85rem', color: '#10b981', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                  ✨ Escribe y selecciona una dirección sugerida por Google Maps
+                </p>
+              ) : (
+                <p style={{ fontSize: '0.85rem', color: '#f59e0b', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                  ⚠️ Cargando Google Maps...
+                </p>
+              )}
+            </div>
+
+            {/* Botón Calcular Ruta y Tarifa */}
+            <button
+              type="button"
+              onClick={handleCalculateRoute}
+              disabled={!deliveryAddressInput || isCalculatingRoute}
+              style={{
+                width: '100%',
+                padding: '1.25rem',
+                backgroundColor: (!deliveryAddressInput) ? '#9ca3af' : isCalculatingRoute ? '#fbbf24' : '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: 'bold',
+                fontSize: '1.25rem',
+                cursor: (!deliveryAddressInput) ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s'
+              }}
+            >
+              {isCalculatingRoute ? (
+                <>
+                  <span>⏳</span>
+                  <span>Calculando tu ruta...</span>
+                </>
+              ) : (
+                <>
+                  <span>🗺️</span>
+                  <span>Calcular Ruta y Tarifa</span>
+                </>
+              )}
+            </button>
+          </section>
+
+          {/* SECCIÓN 3: Resultado del cálculo (solo aparece después de calcular) */}
+          {distance !== null && price !== null && (
+            <section style={{ 
+              marginBottom: '2rem',
+              padding: '2rem 1rem',
+              backgroundColor: '#d1fae5',
+              borderRadius: '1rem',
+              border: '2px solid #10b981',
+              textAlign: 'center'
+            }}>
+              <p style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: 'bold', 
+                color: '#065f46',
+                margin: '0 0 1.5rem 0'
+              }}>
+                ✅ ¡Ruta calculada!
+              </p>
+              
+              {/* Precio destacado */}
+              <div style={{ 
+                fontSize: '2.5rem', 
+                fontWeight: 'bold', 
+                color: '#047857',
+                margin: '1.5rem 0',
+                padding: '1.5rem',
+                backgroundColor: 'white',
+                borderRadius: '0.75rem',
+                border: '2px dashed #10b981'
+              }}>
+                💰 ${price} MXN
+              </div>
+              
+              {/* Distancia */}
+              <p style={{ 
+                fontSize: '1.1rem', 
+                color: '#059669',
+                margin: '0 0 1.5rem 0',
+                fontWeight: '600'
+              }}>
+                🗺️ Distancia: {distance.toFixed(2)} km
+              </p>
+
+              {/* Origen y Destino */}
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '0.75rem',
+                padding: '1.5rem',
+                marginBottom: '1.5rem',
+                border: '2px solid #10b981',
+                textAlign: 'left'
+              }}>
+                {/* Origen */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <p style={{
+                    fontSize: '0.85rem',
+                    color: '#6b7280',
+                    fontWeight: 'bold',
+                    margin: '0 0 0.5rem 0',
+                    textTransform: 'uppercase'
+                  }}>
+                    🚩 Mi Ubicación:
+                  </p>
+                  <p style={{
+                    fontSize: '1rem',
+                    color: '#1f2937',
+                    margin: 0,
+                    lineHeight: '1.5',
+                    fontWeight: '500'
+                  }}>
+                    {street} #{houseNumber}, {suburb}
+                    <br />
+                    {city}, {state} {postcode}
+                  </p>
+                </div>
+
+                {/* Línea divisoria */}
+                <div style={{
+                  height: '2px',
+                  backgroundColor: '#e5e7eb',
+                  margin: '1rem 0'
+                }}></div>
+
+                {/* Destino */}
+                <div>
+                  <p style={{
+                    fontSize: '0.85rem',
+                    color: '#6b7280',
+                    fontWeight: 'bold',
+                    margin: '0 0 0.5rem 0',
+                    textTransform: 'uppercase'
+                  }}>
+                    📍 Destino:
+                  </p>
+                  <p style={{
+                    fontSize: '1rem',
+                    color: '#1f2937',
+                    margin: 0,
+                    lineHeight: '1.5',
+                    fontWeight: '500'
+                  }}>
+                    {deliveryAddressInput}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '1.25rem',
+                  backgroundColor: loading ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontWeight: 'bold',
+                  fontSize: '1.25rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                }}
+              >
+                {loading ? '⏳ Creando Pedido...' : '✅ Confirmar Pedido'}
+              </button>
+            </section>
           )}
 
           {/* Error Message */}

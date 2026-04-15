@@ -15,11 +15,15 @@ interface Order {
   customer?: {
     name: string;
     phone: string;
+    email?: string;
     address: string;
     location?: Location;
   };
   clientName?: string;
   clientPhone?: string;
+  clientEmail?: string;
+  clientAddress?: string;
+  clientLocation?: Location;
   deliveryAddress?: string;
   deliveryPersonName?: string;
   assignedToDeliveryName?: string;
@@ -40,6 +44,8 @@ interface Order {
     timestamp: number;
     note?: string;
   }>;
+  riderName?: string;
+  riderPhone?: string;
 }
 
 const TrackOrderPage: React.FC = () => {
@@ -53,6 +59,7 @@ const TrackOrderPage: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
+  const deliveryPersonMarkerRef = useRef<any>(null); // Marcador del repartidor
 
   const orderId = searchParams.get('pedido');
   const phone = searchParams.get('telefono');
@@ -158,56 +165,72 @@ const TrackOrderPage: React.FC = () => {
 
     try {
       console.log('🔥 Conectando a Firebase...');
+      
+      // Escuchar AMBAS colecciones y combinar datos
+      const clientOrdersRef = ref(database, 'client_orders');
       const ordersRef = ref(database, 'orders');
       
-      const unsubscribe = onValue(ordersRef, (snapshot) => {
-        console.log('📦 Snapshot recibido:', snapshot.exists());
+      let latestClientOrder: Order | null = null;
+      let latestOrdersOrder: Order | null = null;
+      let unsubscribeClientOrders: (() => void) | null = null;
+      let unsubscribeOrders: (() => void) | null = null;
+      
+      // Función para actualizar el pedido combinando ambas fuentes
+      const updateOrderFromSources = () => {
+        if (latestClientOrder && latestOrdersOrder) {
+          // Combinar ambas fuentes: usar client_orders como base pero actualizar status desde orders
+          const combinedOrder = {
+            ...latestClientOrder,
+            // Actualizar campos que pueden cambiar en orders
+            status: latestOrdersOrder.status || latestClientOrder.status,
+            assignedToDeliveryId: latestOrdersOrder.assignedToDeliveryId || latestClientOrder.assignedToDeliveryId,
+            assignedToDeliveryName: latestOrdersOrder.assignedToDeliveryName || latestClientOrder.assignedToDeliveryName,
+            deliveryPersonName: latestOrdersOrder.deliveryPersonName || latestClientOrder.deliveryPersonName,
+          };
+          console.log('🔄 Combinando datos - Status:', combinedOrder.status);
+          setOrder(combinedOrder);
+          setLoading(false);
+        } else if (latestClientOrder) {
+          // Usar client_orders como fuente principal
+          console.log('✅ Usando client_orders - Status:', latestClientOrder.status);
+          setOrder(latestClientOrder);
+          setLoading(false);
+        } else if (latestOrdersOrder) {
+          // Fallback a orders si no hay client_orders
+          console.log('⚠️ Usando orders como fallback - Status:', latestOrdersOrder.status);
+          setOrder(latestOrdersOrder);
+          setLoading(false);
+        }
+      };
+      
+      // Escuchar client_orders
+      unsubscribeClientOrders = onValue(clientOrdersRef, (snapshot) => {
+        console.log('📦 [CLIENT_ORDERS] Snapshot recibido:', snapshot.exists());
         
         if (snapshot.exists()) {
           const orders = snapshot.val();
-          console.log('📋 Pedidos en BD:', Object.keys(orders).length);
-          console.log('📋 Primeros 3 orderCodes:', Object.values(orders).slice(0, 3).map((o: any) => o.orderCode));
+          console.log('📋 [CLIENT_ORDERS] Pedidos encontrados:', Object.keys(orders).length);
           
           let foundOrder: Order | null = null;
 
           if (orderId && orders[orderId]) {
-            console.log('✅ Encontrado por ID:', orderId);
+            console.log('✅ [CLIENT_ORDERS] Encontrado por ID:', orderId);
             foundOrder = { id: orderId, ...orders[orderId] };
           } else if (orderCode) {
-            console.log('🔍 Buscando por código:', orderCode);
+            console.log('🔍 [CLIENT_ORDERS] Buscando por código:', orderCode);
             for (const id in orders) {
               const o = orders[id];
               const code = o.orderCode || '';
               const searchCode = orderCode || '';
               
-              console.log('Comparando orderCode:', code, 'vs', searchCode);
-              
-              // Buscar por orderCode exacto
-              if (code === searchCode) {
-                console.log('✅ Coincidencia exacta orderCode!');
-                foundOrder = { id, ...o };
-                break;
-              }
-              // Buscar por ID de Firebase (para pedidos antiguos sin orderCode)
-              if (id === searchCode) {
-                console.log('✅ Coincidencia por ID de Firebase!');
-                foundOrder = { id, ...o };
-                break;
-              }
-              // Si el código buscado tiene PED- pero el guardado no
-              if (code === `PED-${searchCode}`) {
-                console.log('✅ Coincidencia con PED-!');
-                foundOrder = { id, ...o };
-                break;
-              }
-              if (searchCode.startsWith('PED-') && code === searchCode) {
-                console.log('✅ Coincidencia exacta PED-!');
+              if (code === searchCode || id === searchCode || code === `PED-${searchCode}` || (searchCode.startsWith('PED-') && code === searchCode)) {
+                console.log('✅ [CLIENT_ORDERS] Pedido encontrado!');
                 foundOrder = { id, ...o };
                 break;
               }
             }
           } else if (phone) {
-            console.log('🔍 Buscando por teléfono:', phone);
+            console.log('🔍 [CLIENT_ORDERS] Buscando por teléfono:', phone);
             for (const id in orders) {
               const o = orders[id];
               if (o.customer?.phone === phone || o.clientPhone === phone) {
@@ -219,25 +242,100 @@ const TrackOrderPage: React.FC = () => {
           }
 
           if (foundOrder) {
-            console.log('✅ Pedido encontrado:', foundOrder);
-            setOrder(foundOrder);
-          } else {
-            console.error('❌ No se encontró el pedido');
-            setError('No se encontró el pedido con ese código');
+            console.log('✅ [CLIENT_ORDERS] Pedido actualizado:', foundOrder.status);
+            latestClientOrder = foundOrder;
+            updateOrderFromSources();
           }
-          setLoading(false);
-        } else {
-          console.error('❌ No hay datos en la BD');
-          setError('No hay pedidos en la base de datos');
-          setLoading(false);
         }
       }, (error) => {
-        console.error('❌ Error de Firebase:', error);
-        setError('Error al conectar con la base de datos');
-        setLoading(false);
+        console.error('❌ Error en client_orders:', error);
+      });
+      
+      // También escuchar orders como respaldo y para combinar datos
+      unsubscribeOrders = onValue(ordersRef, (snapshot) => {
+        console.log('📦 [ORDERS] Snapshot recibido:', snapshot.exists());
+        
+        if (snapshot.exists()) {
+          const orders = snapshot.val();
+          console.log('📋 [ORDERS] Pedidos encontrados:', Object.keys(orders).length);
+          
+          let foundOrder: Order | null = null;
+
+          if (orderId && orders[orderId]) {
+            console.log('✅ [ORDERS] Encontrado por ID:', orderId);
+            foundOrder = { id: orderId, ...orders[orderId] };
+          } else if (orderCode) {
+            console.log('🔍 [ORDERS] Buscando por código:', orderCode);
+            for (const id in orders) {
+              const o = orders[id];
+              const code = o.orderCode || '';
+              const searchCode = orderCode || '';
+              
+              if (code === searchCode || id === searchCode || code === `PED-${searchCode}` || (searchCode.startsWith('PED-') && code === searchCode)) {
+                console.log('✅ [ORDERS] Pedido encontrado!');
+                foundOrder = { id, ...o };
+                break;
+              }
+            }
+          } else if (phone) {
+            console.log('🔍 [ORDERS] Buscando por teléfono:', phone);
+            for (const id in orders) {
+              const o = orders[id];
+              if (o.customer?.phone === phone || o.clientPhone === phone) {
+                if (!foundOrder || o.createdAt > foundOrder.createdAt) {
+                  foundOrder = { id, ...o };
+                }
+              }
+            }
+          }
+
+          if (foundOrder) {
+            console.log('✅ [ORDERS] Pedido encontrado:', foundOrder.status);
+            latestOrdersOrder = foundOrder;
+            
+            // Si no tenemos client_orders, usar orders
+            if (!latestClientOrder) {
+              updateOrderFromSources();
+            } else {
+              // Combinar: usar client_orders como base, pero actualizar campos desde orders
+              const combinedOrder = {
+                ...latestClientOrder,
+                // IMPORTANTE: Actualizar el status desde orders (cambia frecuentemente)
+                status: foundOrder.status || latestClientOrder.status,
+                assignedToDeliveryId: foundOrder.assignedToDeliveryId || latestClientOrder.assignedToDeliveryId,
+                // Rellenar campos faltantes desde orders
+                confirmationCode: latestClientOrder.confirmationCode || foundOrder.confirmationCode,
+                customerCode: latestClientOrder.customerCode || foundOrder.customerCode,
+                orderCode: latestClientOrder.orderCode || foundOrder.orderCode,
+                deliveryPersonName: latestClientOrder.deliveryPersonName || foundOrder.deliveryPersonName,
+                assignedToDeliveryName: latestClientOrder.assignedToDeliveryName || foundOrder.assignedToDeliveryName,
+                riderName: latestClientOrder.riderName || foundOrder.riderName,
+                riderPhone: latestClientOrder.riderPhone || foundOrder.riderPhone,
+              };
+              
+              console.log('🔄 Combinando datos de ambas colecciones');
+              console.log('   Status desde orders:', foundOrder.status);
+              console.log('   Status combinado:', combinedOrder.status);
+              setOrder(combinedOrder);
+            }
+          } else if (!latestClientOrder) {
+            console.error('❌ No se encontró el pedido en ninguna colección');
+            setError('No se encontró el pedido con ese código');
+            setLoading(false);
+          }
+        }
+      }, (error) => {
+        console.error('❌ Error en orders:', error);
+        if (!latestClientOrder) {
+          setError('Error al conectar con la base de datos');
+          setLoading(false);
+        }
       });
 
-      return () => unsubscribe();
+      return () => {
+        if (unsubscribeClientOrders) unsubscribeClientOrders();
+        if (unsubscribeOrders) unsubscribeOrders();
+      };
     } catch (err) {
       console.error('❌ Error general:', err);
       setError('Error al cargar el pedido');
@@ -247,24 +345,135 @@ const TrackOrderPage: React.FC = () => {
 
   // Escuchar ubicacion del repartidor en tiempo real
   useEffect(() => {
-    if (!order?.assignedToDeliveryId || !order?.id) return;
+    if (!order?.assignedToDeliveryId || !order?.id) {
+      console.log('⚠️ No hay assignedToDeliveryId o id, no se escucha ubicación');
+      return;
+    }
     
     // Solo escuchar ubicacion cuando el pedido esta en ciertos estados
-    const activeStatuses = ['ACCEPTED', 'ON_THE_WAY_TO_STORE', 'ARRIVED_AT_STORE', 'PICKING_UP_ORDER', 'ON_THE_WAY_TO_CUSTOMER'];
-    if (!activeStatuses.includes(order.status)) return;
+    const activeStatuses = [
+      'ACCEPTED', 
+      'ON_THE_WAY_TO_STORE', 
+      'ARRIVED_AT_STORE', 
+      'PICKING_UP_ORDER', 
+      'ON_THE_WAY_TO_CUSTOMER',
+      // Estados para motocicleta
+      'ON_THE_WAY_TO_PICKUP',
+      'ARRIVED_AT_PICKUP',
+      'ON_THE_WAY_TO_DESTINATION'
+    ];
     
-    console.log('🗺️ Escuchando ubicacion del repartidor:', order.assignedToDeliveryId);
+    console.log('📊 Estado actual:', order.status);
+    console.log('✅ Estados activos para seguimiento:', activeStatuses);
+    console.log('👤 ID del repartidor:', order.assignedToDeliveryId);
     
-    const driverLocationRef = ref(database, `delivery_users/${order.assignedToDeliveryId}/location`);
-    const unsubscribe = onValue(driverLocationRef, (snapshot) => {
+    if (!order.assignedToDeliveryId) {
+      console.error('❌ ERROR: No hay ID de repartidor asignado. No se puede rastrear la ubicación.');
+      return;
+    }
+    
+    if (!activeStatuses.includes(order.status)) {
+      console.warn('⚠️ ADVERTENCIA: El estado actual del pedido no permite seguimiento en vivo.');
+      console.log('📋 Estado actual:', order.status);
+      return;
+    }
+    
+    console.log('🎯 INICIANDO SEGUIMIENTO EN VIVO del repartidor...');
+    console.log('🔗 Rutas Firebase:');
+    console.log('   - delivery_locations/' + order.assignedToDeliveryId);
+    console.log('   - delivery_users/' + order.assignedToDeliveryId + '/location');
+    
+    // PRIMERO: Intentar leer desde delivery_locations (nuevo formato)
+    const deliveryLocationRef = ref(database, `delivery_locations/${order.assignedToDeliveryId}`);
+    console.log('📡 [LISTENER 1] Conectando a delivery_locations...');
+    
+    const unsubscribeDeliveryLocation = onValue(deliveryLocationRef, (snapshot) => {
       const location = snapshot.val();
-      console.log('📍 Ubicacion repartidor:', location);
-      if (location && location.latitude && location.longitude) {
+      const timestamp = new Date().toLocaleTimeString();
+      
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📍 [NUEVO FORMATO] ${timestamp}`);
+      console.log('📦 Datos recibidos:', location);
+      
+      if (!location) {
+        console.warn('⚠️ La ubicación está vacía o no existe');
+      } else if (!location.latitude || !location.longitude) {
+        console.warn('⚠️ Datos de ubicación incompletos (faltan lat/lng)');
+        console.log('   latitude:', location.latitude);
+        console.log('   longitude:', location.longitude);
+      } else {
+        console.log('✅ UBICACIÓN VÁLIDA RECIBIDA');
+        console.log('   🌍 Latitud:', location.latitude);
+        console.log('   🌍 Longitud:', location.longitude);
+        console.log('   📍 Coordenadas:', `${location.latitude}, ${location.longitude}`);
+        
+        if (location.timestamp) {
+          const locTime = new Date(location.timestamp).toLocaleTimeString();
+          console.log('   ⏰ Timestamp del repartidor:', locTime);
+        }
+        
+        console.log('🔄 Actualizando estado driverLocation en React...');
         setDriverLocation({ latitude: location.latitude, longitude: location.longitude });
+        console.log('✅ Marcador del repartidor actualizado en el mapa');
       }
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }, (error) => {
+      console.error('❌ ERROR al escuchar delivery_locations:', error);
+      console.error('   Código:', error.code);
+      console.error('   Mensaje:', error.message);
     });
     
-    return () => unsubscribe();
+    // SEGUNDO: También escuchar delivery_users (formato anterior como respaldo)
+    const driverLocationRef = ref(database, `delivery_users/${order.assignedToDeliveryId}/location`);
+    console.log('📡 [LISTENER 2] Conectando a delivery_users como respaldo...');
+    
+    const unsubscribeDriverLocation = onValue(driverLocationRef, (snapshot) => {
+      const location = snapshot.val();
+      const timestamp = new Date().toLocaleTimeString();
+      
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📍 [FORMATO ANTIGUO - RESPALDO] ${timestamp}`);
+      console.log('📦 Datos recibidos:', location);
+      
+      if (!location) {
+        console.warn('⚠️ La ubicación está vacía o no existe');
+      } else if (!location.latitude || !location.longitude) {
+        console.warn('⚠️ Datos de ubicación incompletos (faltan lat/lng)');
+      } else {
+        console.log('✅ UBICACIÓN VÁLIDA RECIBIDA (formato antiguo)');
+        console.log('   🌍 Latitud:', location.latitude);
+        console.log('   🌍 Longitud:', location.longitude);
+        console.log('   📍 Coordenadas:', `${location.latitude}, ${location.longitude}`);
+        
+        console.log('🔄 Actualizando estado driverLocation en React (solo si no hay nuevo formato)...');
+        setDriverLocation(prev => {
+          if (prev) {
+            console.log('   ⏭️ Ya existe ubicación del nuevo formato, omitiendo');
+            return prev;
+          } else {
+            console.log('   ✅ Aplicando ubicación de respaldo');
+            return { latitude: location.latitude, longitude: location.longitude };
+          }
+        });
+      }
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }, (error) => {
+      console.error('❌ ERROR al escuchar delivery_users:', error);
+      console.error('   Código:', error.code);
+      console.error('   Mensaje:', error.message);
+    });
+    
+    console.log('✅ ✅ ✅ LISTENERS ACTIVOS - Esperando actualizaciones del repartidor...');
+    console.log('💡 Cada vez que el repartidor se mueva, verás los logs arriba');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    return () => {
+      console.log('\n🛑 🛑 🛑 DETENIENDO SEGUIMIENTO');
+      console.log('   Limpiando listeners de Firebase...');
+      unsubscribeDeliveryLocation();
+      unsubscribeDriverLocation();
+      console.log('✅ Listeners eliminados correctamente\n');
+    };
   }, [order?.assignedToDeliveryId, order?.status, order?.id]);
 
   // Cargar mapa UNA SOLA VEZ cuando hay pedido
@@ -308,21 +517,116 @@ const TrackOrderPage: React.FC = () => {
         console.log('✅ Mapa creado');
         setMapLoaded(true);
         
-        // Marcador del cliente (destino) - solo si existe
-        const customerLocation = order.customerLocation || order.deliveryLocation || order.customer?.location;
-        if (customerLocation?.latitude) {
+        // Recopilar todas las ubicaciones para ajustar el zoom
+        const bounds = new google.maps.LatLngBounds();
+        let hasMarkers = false;
+        
+        // Marcador del cliente (destino de entrega) - solo si existe
+        console.log('🔍 [DEBUG] order.deliveryLocation:', order.deliveryLocation);
+        console.log('🔍 [DEBUG] order.customer?.location:', order.customer?.location);
+        console.log('🔍 [DEBUG] order.clientLocation:', order.clientLocation);
+        console.log('🔍 [DEBUG] order.customerLocation:', order.customerLocation);
+        console.log('🔍 [DEBUG] order completo:', order);
+        
+        const deliveryLocation = order.deliveryLocation || order.customer?.location;
+        if (deliveryLocation?.latitude) {
+          console.log('✅ [MAPA] Coordenadas de DESTINO encontradas:', deliveryLocation);
+          // Crear marcador personalizado con emoji
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = 60;
+          canvas.height = 60;
+          
+          if (ctx) {
+            // Fondo circular verde
+            ctx.beginPath();
+            ctx.arc(30, 30, 25, 0, 2 * Math.PI);
+            ctx.fillStyle = '#10b981';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Emoji bandera de llegada
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🏁', 30, 30);
+          }
+          
           new google.maps.Marker({
-            position: { lat: customerLocation.latitude, lng: customerLocation.longitude },
+            position: { lat: deliveryLocation.latitude, lng: deliveryLocation.longitude },
             map: map,
-            title: 'Tu ubicacion',
+            title: 'Destino de entrega',
             icon: {
-              url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-              scaledSize: new google.maps.Size(40, 40)
+              url: canvas.toDataURL(),
+              scaledSize: new google.maps.Size(50, 50)
             }
           });
-          // Centrar en cliente
-          map.setCenter({ lat: customerLocation.latitude, lng: customerLocation.longitude });
-          console.log('✅ Marcador cliente agregado');
+          bounds.extend({ lat: deliveryLocation.latitude, lng: deliveryLocation.longitude });
+          hasMarkers = true;
+          console.log('✅ Marcador DESTINO DE ENTREGA agregado en:', deliveryLocation.latitude, deliveryLocation.longitude);
+        } else {
+          console.warn('⚠️ [MAPA] No se encontraron coordenadas para el destino de entrega');
+        }
+        
+        // Marcador de dirección del cliente (ubicación actual del cliente/ORIGEN) - solo si es diferente
+        // IMPORTANTE: Usar clientLocation PRIMERO porque customerLocation puede tener coordenadas incorrectas
+        const customerLocation = order.clientLocation || order.customerLocation;
+        console.log('🔍 [DEBUG] customerLocation final:', customerLocation);
+        console.log('🔍 [DEBUG] deliveryLocation para comparar:', deliveryLocation);
+        
+        if (customerLocation?.latitude) {
+          console.log('✅ [MAPA] Coordenadas de ORIGEN encontradas:', customerLocation);
+          
+          // Verificar si son diferentes al destino
+          const esDiferente = !deliveryLocation || 
+                             customerLocation.latitude !== deliveryLocation.latitude || 
+                             customerLocation.longitude !== deliveryLocation.longitude;
+          
+          console.log('🔍 [DEBUG] ¿Es diferente al destino?', esDiferente);
+          
+          if (esDiferente) {
+            // Crear marcador personalizado con emoji
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 60;
+            canvas.height = 60;
+            
+            if (ctx) {
+              // Fondo circular rojo
+              ctx.beginPath();
+              ctx.arc(30, 30, 25, 0, 2 * Math.PI);
+              ctx.fillStyle = '#ef4444';
+              ctx.fill();
+              ctx.strokeStyle = 'white';
+              ctx.lineWidth = 3;
+              ctx.stroke();
+              
+              // Emoji casa
+              ctx.font = '24px Arial';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('🏠', 30, 30);
+            }
+            
+            new google.maps.Marker({
+              position: { lat: customerLocation.latitude, lng: customerLocation.longitude },
+              map: map,
+              title: 'Dirección del Cliente',
+              icon: {
+                url: canvas.toDataURL(),
+                scaledSize: new google.maps.Size(50, 50)
+              }
+            });
+            bounds.extend({ lat: customerLocation.latitude, lng: customerLocation.longitude });
+            hasMarkers = true;
+            console.log('✅ Marcador DIRECCIÓN DEL CLIENTE (ORIGEN) agregado en:', customerLocation.latitude, customerLocation.longitude);
+          } else {
+            console.log('ℹ️ [MAPA] Las coordenadas del ORIGEN son IGUALES al DESTINO, no se agrega marcador duplicado');
+          }
+        } else {
+          console.warn('⚠️ [MAPA] No se encontraron coordenadas para la dirección del cliente (ORIGEN)');
         }
         
         // Marcador del restaurante si existe
@@ -336,7 +640,17 @@ const TrackOrderPage: React.FC = () => {
               scaledSize: new google.maps.Size(40, 40)
             }
           });
+          bounds.extend({ lat: order.restaurantLocation.latitude, lng: order.restaurantLocation.longitude });
+          hasMarkers = true;
           console.log('✅ Marcador restaurante agregado');
+        }
+        
+        // Ajustar el zoom para mostrar todos los marcadores
+        if (hasMarkers) {
+          // Agregar padding para que los marcadores no queden en los bordes
+          map.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
+          console.log('✅ Mapa ajustado para mostrar todos los marcadores');
+          console.log('📊 Bounds calculados:', bounds.getNorthEast().lat(), bounds.getNorthEast().lng(), 'a', bounds.getSouthWest().lat(), bounds.getSouthWest().lng());
         }
       } catch (err) {
         console.error('❌ Error cargando mapa:', err);
@@ -348,95 +662,203 @@ const TrackOrderPage: React.FC = () => {
 
   // Actualizar marcador del repartidor en tiempo real
   useEffect(() => {
-    if (!mapInstanceRef.current || !driverLocation || !googleLoaded) return;
+    if (!mapInstanceRef.current || !driverLocation || !googleLoaded) {
+      if (!mapInstanceRef.current) console.warn('⚠️ Mapa no está listo todavía');
+      if (!driverLocation) console.warn('⚠️ No hay ubicación del repartidor para actualizar');
+      if (!googleLoaded) console.warn('⚠️ Google Maps API no está cargada');
+      return;
+    }
     
-    console.log('🚴 Actualizando marcador repartidor:', driverLocation);
+    console.log('\n🚴 🚴 🚴 ACTUALIZANDO MARCADOR DEL REPARTIDOR EN EL MAPA');
+    console.log('   📍 Nueva ubicación:', driverLocation);
+    console.log('   🌍 Latitud:', driverLocation.latitude);
+    console.log('   🌍 Longitud:', driverLocation.longitude);
+    console.log('   ⏰ Hora de actualización:', new Date().toLocaleTimeString());
     
     // Crear o actualizar marcador del repartidor
     if (!driverMarkerRef.current) {
+      // Crear marcador personalizado con emoji
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 60;
+      canvas.height = 60;
+      
+      if (ctx) {
+        // Fondo circular azul
+        ctx.beginPath();
+        ctx.arc(30, 30, 25, 0, 2 * Math.PI);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Emoji según tipo de servicio
+        const emoji = order?.serviceType === 'MOTORCYCLE_TAXI' ? '🏍️' : '🚴';
+        console.log('🎨 Dibujando emoji:', emoji, 'para serviceType:', order?.serviceType);
+        
+        ctx.font = 'bold 32px Arial, Segoe UI Emoji, Apple Color Emoji, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, 30, 32); // Ajustar posición Y para centrar mejor
+        
+        console.log('✅ Canvas creado con emoji');
+      }
+      
       driverMarkerRef.current = new googleLoaded.maps.Marker({
         position: { lat: driverLocation.latitude, lng: driverLocation.longitude },
         map: mapInstanceRef.current,
         title: 'Tu repartidor',
         icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-          scaledSize: new googleLoaded.maps.Size(48, 48)
+          url: canvas.toDataURL(),
+          scaledSize: new googleLoaded.maps.Size(50, 50)
         }
       });
-      console.log('✅ Marcador repartidor creado');
+      console.log('✅ ✅ ✅ Marcador del repartidor CREADO en el mapa');
     } else {
-      driverMarkerRef.current.setPosition({ lat: driverLocation.latitude, lng: driverLocation.longitude });
-      console.log('✅ Marcador repartidor actualizado');
+      // Animación suave: mover el marcador gradualmente
+      const currentPos = driverMarkerRef.current.getPosition();
+      const targetPos = { lat: driverLocation.latitude, lng: driverLocation.longitude };
+      
+      console.log('   📍 Posición actual del marcador:', currentPos.lat(), currentPos.lng());
+      console.log('   🎯 Posición objetivo:', targetPos.lat, targetPos.lng);
+      
+      // Calcular distancia del movimiento
+      const distance = Math.sqrt(
+        Math.pow(targetPos.lat - currentPos.lat(), 2) + 
+        Math.pow(targetPos.lng - currentPos.lng(), 2)
+      );
+      console.log('   📏 Distancia a mover:', (distance * 111000).toFixed(2), 'metros aproximadamente');
+      
+      // Interpolar para movimiento suave
+      const steps = 10;
+      const latStep = (targetPos.lat - currentPos.lat()) / steps;
+      const lngStep = (targetPos.lng - currentPos.lng()) / steps;
+      
+      console.log('   🎬 Iniciando animación suave (' + steps + ' pasos)...');
+      
+      let step = 0;
+      const animate = () => {
+        if (step < steps) {
+          const newPos = {
+            lat: currentPos.lat() + (latStep * (step + 1)),
+            lng: currentPos.lng() + (lngStep * (step + 1))
+          };
+          driverMarkerRef.current.setPosition(newPos);
+          step++;
+          requestAnimationFrame(animate);
+        } else {
+          driverMarkerRef.current.setPosition(targetPos);
+          console.log('   ✅ Animación completada - Marcador en posición final');
+        }
+      };
+      
+      animate();
+      console.log('✅ ✅ ✅ Marcador del repartidor ACTUALIZADO con animación suave');
     }
     
     // Centrar mapa en el repartidor
+    console.log('   🗺️ Centrando mapa en la nueva posición del repartidor...');
     mapInstanceRef.current.panTo({ lat: driverLocation.latitude, lng: driverLocation.longitude });
+    console.log('✅ ✅ ✅ ACTUALIZACIÓN DEL MAPA COMPLETADA\n');
     
   }, [driverLocation, googleLoaded]);
 
   const getStatusInfo = (status: string) => {
     const deliveryName = order?.deliveryPersonName || order?.assignedToDeliveryName || 'tu repartidor';
     
-    const statusMap: { [key: string]: { emoji: string; title: string; description: string; color: string } } = {
+    const statusMap: { [key: string]: { emoji: string; title: string; description: string; color: string; mapMessage: string } } = {
       'pending': {
         emoji: '⏳',
         title: 'Buscando repartidor',
         description: 'Tu pedido está esperando ser asignado.',
-        color: '#f59e0b'
+        color: '#f59e0b',
+        mapMessage: '🔍 Estamos buscando al repartidor ideal para ti... ¡Pronto tendremos noticias!'
       },
       'MANUAL_ASSIGNED': {
         emoji: '⏳',
         title: 'Pendiente de asignación',
         description: 'Estamos buscando un repartidor para tu pedido.',
-        color: '#f59e0b'
+        color: '#f59e0b',
+        mapMessage: '🔍 Estamos buscando al repartidor ideal para ti... ¡Pronto tendremos noticias!'
       },
       'accepted': {
         emoji: '✅',
         title: '¡Pedido aceptado!',
         description: `Tu repartidor es ${deliveryName}.`,
-        color: '#10b981'
+        color: '#10b981',
+        mapMessage: '🎉 ¡Tu pedido ya fue recibido por uno de nuestros repartidores! Pronto comenzará tu entrega.'
       },
       'ACCEPTED': {
         emoji: '✅',
         title: '¡Pedido aceptado!',
         description: `Tu repartidor es ${deliveryName}.`,
-        color: '#10b981'
+        color: '#10b981',
+        mapMessage: '🎉 ¡Tu pedido ya fue recibido por uno de nuestros repartidores! Pronto comenzará tu entrega.'
       },
       'ON_THE_WAY_TO_STORE': {
         emoji: '🚗',
         title: 'En camino a recoger',
         description: `${deliveryName} va a recoger tu pedido.`,
-        color: '#3b82f6'
+        color: '#3b82f6',
+        mapMessage: `🚗 ${deliveryName} está en camino a recoger tu orden. ¡Todo va perfecto!`
       },
       'ARRIVED_AT_STORE': {
         emoji: '📍',
         title: 'Llegó al lugar',
         description: `${deliveryName} está en el lugar de recogida.`,
-        color: '#8b5cf6'
+        color: '#8b5cf6',
+        mapMessage: `📍 ${deliveryName} ya llegó al punto de recogida. ¡Está por obtener tu pedido!`
       },
       'PICKING_UP_ORDER': {
         emoji: '📦',
         title: 'Recogiendo pedido',
         description: `${deliveryName} está recogiendo tu pedido.`,
-        color: '#ec4899'
+        color: '#ec4899',
+        mapMessage: `📦 ${deliveryName} está recogiendo tu pedido con mucho cuidado. ¡Ya casi!`
       },
       'ON_THE_WAY_TO_CUSTOMER': {
         emoji: '🚴',
         title: '¡En camino a tu domicilio!',
         description: `${deliveryName} ya viene con tu pedido.`,
-        color: '#10b981'
+        color: '#10b981',
+        mapMessage: `🚴💨 ¡${deliveryName} está en camino a tu domicilio! Prepárate para recibir tu pedido.`
       },
       'DELIVERED': {
         emoji: '✅',
         title: '¡Entregado!',
         description: 'Tu pedido fue entregado. ¡Gracias!',
-        color: '#059669'
+        color: '#059669',
+        mapMessage: '🎊 ¡Tu pedido ha sido entregado exitosamente! Gracias por confiar en nosotros. ¡Que lo disfrutes! 😊'
       },
       'CANCELLED': {
         emoji: '❌',
         title: 'Cancelado',
         description: 'Este pedido fue cancelado.',
-        color: '#ef4444'
+        color: '#ef4444',
+        mapMessage: '❌ Este pedido ha sido cancelado. Si tienes dudas, contáctanos.'
+      },
+      // Estados específicos para MOTOCICLETA
+      'ON_THE_WAY_TO_PICKUP': {
+        emoji: '🏍️',
+        title: 'En camino a recogerte',
+        description: `${deliveryName} va en camino a tu ubicación.`,
+        color: '#3b82f6',
+        mapMessage: `🏍️ ${deliveryName} está en camino a recogerte. ¡Prepárate!`
+      },
+      'ARRIVED_AT_PICKUP': {
+        emoji: '📍',
+        title: '¡Llegó por ti!',
+        description: `${deliveryName} llegó al punto de recogida.`,
+        color: '#10b981',
+        mapMessage: `📍 ${deliveryName} ya llegó. ¡Sube a la motocicleta!`
+      },
+      'ON_THE_WAY_TO_DESTINATION': {
+        emoji: '🛣️',
+        title: 'En camino al destino',
+        description: `${deliveryName} te lleva a tu destino.`,
+        color: '#f59e0b',
+        mapMessage: `🛣️ ${deliveryName} te está llevando a tu destino. ¡Buen viaje!`
       }
     };
     
@@ -444,7 +866,8 @@ const TrackOrderPage: React.FC = () => {
       emoji: '📦', 
       title: status, 
       description: 'Estado del pedido',
-      color: '#6b7280'
+      color: '#6b7280',
+      mapMessage: '📦 Seguimiento del pedido en proceso.'
     };
   };
 
@@ -543,23 +966,21 @@ const TrackOrderPage: React.FC = () => {
       historyMap.set('PENDING', order.createdAt);
     }
     
-    // Estados únicos para mostrar (evitar duplicados pending/PENDING)
+    // Estados únicos para mostrar (sin duplicados)
     const uniqueStatuses = [
       { key: 'pending', label: 'Pedido creado' },
       { key: 'MANUAL_ASSIGNED', label: 'Asignado a repartidor' },
       { key: 'ACCEPTED', label: 'Pedido aceptado' },
-      { key: 'ON_THE_WAY_TO_STORE', label: 'En camino a recoger' },
-      { key: 'ARRIVED_AT_STORE', label: 'Llegó al lugar' },
-      { key: 'PICKING_UP_ORDER', label: 'Recogiendo pedido' },
-      { key: 'ON_THE_WAY_TO_CUSTOMER', label: 'En camino a entregar' },
-      { key: 'DELIVERED', label: 'Pedido entregado' }
+      { key: 'ON_THE_WAY_TO_PICKUP', label: 'En camino a recogerte' },
+      { key: 'ARRIVED_AT_PICKUP', label: 'Repartidor llegó' },
+      { key: 'ON_THE_WAY_TO_DESTINATION', label: 'En camino al destino' },
+      { key: 'DELIVERED', label: 'Viaje completado' }
     ];
     
     // Determinar cuál es el estado actual en nuestro flujo
     let actualCurrentIndex = -1;
     for (let i = 0; i < uniqueStatuses.length; i++) {
       if (uniqueStatuses[i].key === currentStatus || 
-          (currentStatus === 'pending' && uniqueStatuses[i].key === 'pending') ||
           (currentStatus === 'PENDING' && uniqueStatuses[i].key === 'pending') ||
           (currentStatus === 'accepted' && uniqueStatuses[i].key === 'ACCEPTED') ||
           (currentStatus === 'ACCEPTED' && uniqueStatuses[i].key === 'ACCEPTED')) {
@@ -692,7 +1113,7 @@ const TrackOrderPage: React.FC = () => {
                 justifyContent: 'center',
                 fontSize: '1.5rem'
               }}>
-                🚴
+                {order.serviceType === 'MOTORCYCLE_TAXI' ? '🏍️' : '🚴'}
               </div>
               <div>
                 <p style={{ color: '#065f46', fontSize: '0.75rem', fontWeight: '500', marginBottom: '0.25rem' }}>
@@ -739,11 +1160,17 @@ const TrackOrderPage: React.FC = () => {
                 backgroundColor: '#f3f4f6'
               }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>
-              {(order.customerLocation || order.deliveryLocation || order.customer?.location) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem', fontSize: '0.75rem', color: '#6b7280', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {order.customerLocation && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></span>
+                  <span>📍 Dirección del Cliente</span>
+                </div>
+              )}
+              {(order.deliveryLocation || order.customer?.location) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
-                  <span>Tu ubicacion</span>
+                  <span>📍 Destino de entrega</span>
                 </div>
               )}
               {order.restaurantLocation && (
@@ -772,87 +1199,25 @@ const TrackOrderPage: React.FC = () => {
           </div>
         )}
 
-        {/* Historial de Estados */}
+        {/* Mensaje dinámico debajo del mapa */}
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: '#f0fdf4',
           borderRadius: '1rem',
           padding: '1.25rem',
           marginBottom: '1rem',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          border: '2px solid #86efac',
+          textAlign: 'center',
+          transition: 'all 0.3s ease'
         }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }}>
-            📜 Historial del pedido
-          </h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {statusHistory.map((item, index) => {
-              const isLast = index === statusHistory.length - 1;
-              const hasTimestamp = item.timestamp !== undefined;
-              const dateStr = hasTimestamp 
-                ? new Date(item.timestamp!).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
-                : '--';
-              const timeStr = hasTimestamp
-                ? new Date(item.timestamp!).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
-                : '--:--';
-              
-              return (
-                <div key={index} style={{ display: 'flex' }}>
-                  {/* Línea y punto */}
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    marginRight: '0.75rem'
-                  }}>
-                    <div style={{ 
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      backgroundColor: item.completed ? '#10b981' : '#e5e7eb',
-                      border: `2px solid ${item.completed ? '#10b981' : '#d1d5db'}`,
-                      flexShrink: 0
-                    }} />
-                    {!isLast && (
-                      <div style={{
-                        width: '2px',
-                        flex: 1,
-                        backgroundColor: '#e5e7eb',
-                        margin: '4px 0'
-                      }} />
-                    )}
-                  </div>
-                  
-                  {/* Contenido */}
-                  <div style={{ 
-                    flex: 1, 
-                    paddingBottom: isLast ? '0' : '1rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start'
-                  }}>
-                    <div>
-                      <p style={{ 
-                        fontWeight: item.completed ? '600' : '400', 
-                        color: item.completed ? '#111827' : '#9ca3af',
-                        margin: 0,
-                        fontSize: '0.875rem'
-                      }}>
-                        {item.completed ? '✓ ' : '○ '}{item.label}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
-                        {dateStr}
-                      </p>
-                      <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.125rem 0 0 0' }}>
-                        {timeStr}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <p style={{ 
+            margin: 0, 
+            color: '#166534', 
+            fontSize: '1rem',
+            fontWeight: '600',
+            lineHeight: '1.5'
+          }}>
+            {statusInfo.mapMessage}
+          </p>
         </div>
 
         {/* Detalles */}
@@ -869,11 +1234,19 @@ const TrackOrderPage: React.FC = () => {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Cliente:</span>
+              <span style={{ color: '#6b7280' }}>👤 Cliente:</span>
               <span style={{ fontWeight: '500' }}>{order.customer?.name || order.clientName}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Dirección:</span>
+              <span style={{ color: '#6b7280' }}>📞 Teléfono:</span>
+              <span style={{ fontWeight: '500' }}>{order.customer?.phone || order.clientPhone}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6b7280' }}>📧 Email:</span>
+              <span style={{ fontWeight: '500' }}>{order.customer?.email || order.clientEmail || 'No proporcionado'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6b7280' }}>📍 Dirección:</span>
               <span style={{ fontWeight: '500', textAlign: 'right', maxWidth: '60%' }}>
                 {order.customer?.address || order.deliveryAddress}
               </span>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { ref, get } from 'firebase/database';
+import { database } from '../services/Firebase';
 import AuthService from '../services/AuthService';
 
 const Login: React.FC = () => {
@@ -18,8 +20,29 @@ const Login: React.FC = () => {
       const success = await AuthService.login(email, password);
       
       if (success) {
-        // Redirigir a la pantalla de selección de servicios
-        navigate('/servicios');
+        // Obtener el ID del cliente autenticado
+        const clientId = AuthService.getClientId() || '';
+        
+        if (clientId) {
+          // Verificar si hay pedidos activos para este cliente
+          const hasActiveOrder = await checkForActiveOrder(clientId);
+          
+          // Pequeño delay para asegurar que la sesión se guarde correctamente
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          if (hasActiveOrder) {
+            // Si hay un pedido activo, redirigir al seguimiento
+            console.log('🎯 Navegando a seguimiento:', hasActiveOrder);
+            window.location.href = `/seguimiento?pedido=${hasActiveOrder}`;
+          } else {
+            // Si no hay pedido activo, ir a selección de servicios
+            console.log('🎯 Navegando a servicios (sin pedidos activos)');
+            window.location.href = '/servicios';
+          }
+        } else {
+          // Si no hay clientId, ir a servicios por defecto
+          window.location.href = '/servicios';
+        }
       } else {
         setError('Correo o contraseña incorrectos');
       }
@@ -27,6 +50,63 @@ const Login: React.FC = () => {
       setError('Error al iniciar sesión');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Función para verificar si hay pedidos activos
+  const checkForActiveOrder = async (clientId: string): Promise<string | null> => {
+    try {
+      console.log('=== INICIO VERIFICACIÓN DE PEDIDOS ===');
+      console.log('Client ID:', clientId);
+      console.log('Client Name:', AuthService.getClientName());
+      
+      const ordersRef = ref(database, 'orders');
+      const snapshot = await get(ordersRef);
+      
+      if (snapshot.exists()) {
+        const allOrders = snapshot.val();
+        const clientName = AuthService.getClientName() || '';
+        
+        console.log('Total de pedidos encontrados:', Object.keys(allOrders).length);
+        
+        // Buscar pedidos activos del cliente
+        for (const orderId in allOrders) {
+          const order = allOrders[orderId];
+          
+          console.log(`Pedido ${orderId}:`, {
+            clientId: order.clientId,
+            customerName: order.customer?.name,
+            status: order.status,
+            matchesById: order.clientId === clientId,
+            matchesByName: order.customer?.name === clientName
+          });
+          
+          // Verificar si es del cliente (por clientId o por nombre del cliente)
+          const isClientOrder = order.clientId === clientId || 
+                               (order.customer && order.customer.name === clientName);
+          
+          if (isClientOrder) {
+            // Estados activos: todos excepto entregado, cancelado o completado
+            const inactiveStatuses = ['delivered', 'cancelled', 'completed', 'DELIVERED', 'CANCELLED'];
+            const isOrderActive = !inactiveStatuses.includes(order.status);
+            
+            console.log('Pedido del cliente encontrado - Activo:', isOrderActive);
+            
+            if (isOrderActive) {
+              console.log('✅ REDIRIGIENDO AL PEDIDO ACTIVO:', orderId);
+              return orderId; // Retornar el ID del pedido activo
+            }
+          }
+        }
+      } else {
+        console.log('No hay pedidos en la base de datos');
+      }
+      
+      console.log('=== NO SE ENCONTRARON PEDIDOS ACTIVOS ===');
+      return null; // No hay pedidos activos
+    } catch (error) {
+      console.error('Error verificando pedidos activos:', error);
+      return null;
     }
   };
 
