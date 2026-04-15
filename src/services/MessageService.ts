@@ -45,7 +45,7 @@ class MessageService {
       // Crear referencia para nuevo mensaje en la base de datos
       const newMessageRef = databaseRef(database, `messages/${Date.now()}_${senderId}`);
       
-      const messageObject: Message = {
+      const messageObject: any = {
         id: newMessageRef.key || `${Date.now()}_${senderId}`,
         senderId,
         senderName,
@@ -55,9 +55,13 @@ class MessageService {
         timestamp: Date.now(),
         isRead: false,
         messageType,
-        orderId,
-        imageUrl // Mantener undefined si no se proporciona
+        orderId
       };
+      
+      // Solo agregar imageUrl si existe (Firebase no acepta undefined)
+      if (imageUrl) {
+        messageObject.imageUrl = imageUrl;
+      }
       
       // Guardar en Firebase
       await set(newMessageRef, messageObject);
