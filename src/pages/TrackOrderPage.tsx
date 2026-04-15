@@ -1102,7 +1102,7 @@ const TrackOrderPage: React.FC = () => {
             marginBottom: '1rem',
             border: '1px solid #a7f3d0'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
               <div style={{
                 width: '50px',
                 height: '50px',
@@ -1124,6 +1124,31 @@ const TrackOrderPage: React.FC = () => {
                 </p>
               </div>
             </div>
+            
+            {/* Botón Chatear con tu repartidor */}
+            <a
+              href={`/chat?deliveryId=${order.assignedToDeliveryId || ''}&deliveryName=${encodeURIComponent(order.deliveryPersonName || order.assignedToDeliveryName || '')}&orderId=${order.orderCode || order.id}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                width: '100%',
+                padding: '0.75rem 1rem',
+                backgroundColor: '#10b981',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                transition: 'background-color 0.2s',
+                boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
+            >
+              💬 Chatear con tu repartidor
+            </a>
           </div>
         )}
 
