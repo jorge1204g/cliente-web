@@ -14,6 +14,13 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Validar que los campos no estén vacíos
+    if (!email.trim() || !password.trim()) {
+      setError('Por favor ingresa tu correo electrónico y contraseña');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -127,6 +134,35 @@ const Login: React.FC = () => {
         maxWidth: '400px',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
       }}>
+        {/* Nota importante */}
+        <div style={{
+          marginBottom: '1.5rem',
+          padding: '1rem',
+          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          border: '2px solid #f59e0b',
+          borderRadius: '0.75rem',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            fontSize: '0.9375rem',
+            color: '#92400e',
+            margin: '0 0 0.5rem 0',
+            fontWeight: '600',
+            lineHeight: '1.5'
+          }}>
+            ⚠️ ¡IMPORTANTE!
+          </p>
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#78350f',
+            margin: '0',
+            lineHeight: '1.5'
+          }}>
+            Debes crear tu cuenta para poder solicitar tu pedido de comida. 
+            <strong> Sin registro no podrás utilizar el servicio ni ver tu pedido en vivo.</strong>
+          </p>
+        </div>
+
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{
@@ -225,12 +261,6 @@ const Login: React.FC = () => {
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s'
             }}
-            onClick={(e) => {
-              if (!loading) {
-                // Redirigir a la pantalla de selección de servicios después de login
-                setTimeout(() => navigate('/servicios'), 500);
-              }
-            }}
           >
             {loading ? 'Iniciando...' : 'Iniciar Sesión'}
           </button>
@@ -243,14 +273,15 @@ const Login: React.FC = () => {
           paddingTop: '1.5rem',
           borderTop: '1px solid #e5e7eb'
         }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ color: '#6b7280', fontSize: '1.125rem' }}>
             ¿No tienes cuenta?{' '}
             <Link
               to="/registro"
               style={{
                 color: '#667eea',
-                fontWeight: '600',
-                textDecoration: 'none'
+                fontWeight: '700',
+                textDecoration: 'none',
+                fontSize: '1.25rem'
               }}
             >
               Regístrate aquí
