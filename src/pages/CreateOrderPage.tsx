@@ -229,11 +229,13 @@ const CreateOrderPage: React.FC = () => {
             fields: ['geometry', 'formatted_address', 'address_components']
           });
           
-          deliveryAutocompleteRef.current.addListener('place_changed', () => {
-            const place = deliveryAutocompleteRef.current?.getPlace();
-            if (place && place.geometry) {
-              setDeliveryLat(place.geometry.location.lat());
-              setDeliveryLng(place.geometry.location.lng());
+          if (deliveryAutocompleteRef.current) {
+            deliveryAutocompleteRef.current.addListener('place_changed', () => {
+              const place = deliveryAutocompleteRef.current?.getPlace();
+              if (place && place.geometry?.location) {
+                setDeliveryLat(place.geometry.location.lat());
+                setDeliveryLng(place.geometry.location.lng());
+              }
               setAlternativeAddressInput(place.formatted_address || '');
               
               // Intentar llenar campos individuales si es posible
@@ -258,8 +260,8 @@ const CreateOrderPage: React.FC = () => {
                 if (postcode) setPostcode(postcode);
               }
               console.log('✅ [ALTERNATIVA] Dirección seleccionada:', place.formatted_address);
-            }
-          });
+            });
+          }
         }
       }
     }

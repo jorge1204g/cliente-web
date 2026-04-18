@@ -197,11 +197,13 @@ const MotorcycleServicePage: React.FC = () => {
             fields: ['geometry', 'formatted_address', 'address_components']
           });
           
-          deliveryAutocompleteRef.current.addListener('place_changed', () => {
-            const place = deliveryAutocompleteRef.current?.getPlace();
-            if (place && place.geometry) {
-              setDeliveryLat(place.geometry.location.lat());
-              setDeliveryLng(place.geometry.location.lng());
+          if (deliveryAutocompleteRef.current) {
+            deliveryAutocompleteRef.current.addListener('place_changed', () => {
+              const place = deliveryAutocompleteRef.current?.getPlace();
+              if (place && place.geometry?.location) {
+                setDeliveryLat(place.geometry.location.lat());
+                setDeliveryLng(place.geometry.location.lng());
+              }
               setAlternativeAddressInput(place.formatted_address || '');
               
               // Intentar llenar campos individuales si es posible
@@ -226,8 +228,8 @@ const MotorcycleServicePage: React.FC = () => {
                 if (postcode) setPostcode(postcode);
               }
               console.log('✅ [ALTERNATIVA] Dirección seleccionada:', place.formatted_address);
-            }
-          });
+            });
+          }
         }
       }
     }
@@ -278,19 +280,21 @@ const MotorcycleServicePage: React.FC = () => {
           fields: ['geometry', 'formatted_address', 'address_components']
         });
         
-        deliveryAutocompleteRef2.current.addListener('place_changed', () => {
-          console.log('🎯 [DESTINO] Evento place_changed disparado');
-          const place = deliveryAutocompleteRef2.current?.getPlace();
-          if (place && place.geometry && place.geometry.location) {
-            console.log('✅ [DESTINO] Dirección seleccionada:', place.formatted_address);
-            console.log('✅ [DESTINO] Coordenadas:', place.geometry.location.lat(), place.geometry.location.lng());
-            setDeliveryAddressInput(place.formatted_address || '');
-            setDestLat(place.geometry.location.lat());
-            setDestLng(place.geometry.location.lng());
-          } else {
-            console.warn('⚠️ [DESTINO] Lugar seleccionado sin geometría');
-          }
-        });
+        if (deliveryAutocompleteRef2.current) {
+          deliveryAutocompleteRef2.current.addListener('place_changed', () => {
+            console.log('🎯 [DESTINO] Evento place_changed disparado');
+            const place = deliveryAutocompleteRef2.current?.getPlace();
+            if (place && place.geometry?.location) {
+              console.log('✅ [DESTINO] Dirección seleccionada:', place.formatted_address);
+              console.log('✅ [DESTINO] Coordenadas:', place.geometry.location.lat(), place.geometry.location.lng());
+              setDeliveryAddressInput(place.formatted_address || '');
+              setDestLat(place.geometry.location.lat());
+              setDestLng(place.geometry.location.lng());
+            } else {
+              console.warn('⚠️ [DESTINO] Lugar seleccionado sin geometría');
+            }
+          });
+        }
         
         console.log('✅ [AUTOCOMPLETE] Inicializado correctamente en intento', attempt + 1);
         return true;

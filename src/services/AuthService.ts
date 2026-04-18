@@ -42,8 +42,8 @@ class AuthService {
     }
   }
 
-  // Login cliente
-  async login(email: string, password: string): Promise<boolean> {
+  // Login cliente (con email o teléfono)
+  async login(emailOrPhone: string, password: string): Promise<boolean> {
     try {
      const clientsRef = ref(database, 'clients');
      const snapshot = await get(clientsRef);
@@ -53,9 +53,13 @@ class AuthService {
       }
 
      const clients = snapshot.val();
-     const clientFound = Object.values(clients as any).find((client: any) => 
-       client.email === email && client.password === password
-      );
+     
+     // Buscar por email o por teléfono
+     const clientFound = Object.values(clients as any).find((client: any) => {
+       const matchesByEmail = client.email === emailOrPhone && client.password === password;
+       const matchesByPhone = client.phone === emailOrPhone && client.password === password;
+       return matchesByEmail || matchesByPhone;
+      });
 
       if (clientFound) {
        const client = clientFound as any;

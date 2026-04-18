@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../services/Firebase';
-import { MessageService } from '../services/MessageService';
+import MessageService from '../services/MessageService';
 
 interface Location {
   latitude: number;
@@ -449,7 +449,6 @@ const TrackOrderPage: React.FC = () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }, (error) => {
       console.error('❌ ERROR al escuchar delivery_locations:', error);
-      console.error('   Código:', error.code);
       console.error('   Mensaje:', error.message);
     });
     
@@ -489,7 +488,6 @@ const TrackOrderPage: React.FC = () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }, (error) => {
       console.error('❌ ERROR al escuchar delivery_users:', error);
-      console.error('   Código:', error.code);
       console.error('   Mensaje:', error.message);
     });
     

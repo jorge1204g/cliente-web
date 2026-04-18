@@ -147,7 +147,7 @@ class MessageService {
           const isForThisOrder = message.orderId === orderId;
           
           if (isBetweenUsers && isForThisOrder) {
-            deletePromises.set(
+            deletePromises.push(
               set(databaseRef(database, `messages/${childSnapshot.key!}`), null)
             );
             deletedCount++;

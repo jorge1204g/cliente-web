@@ -6,7 +6,7 @@ import AuthService from '../services/AuthService';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,15 +16,15 @@ const Login: React.FC = () => {
     setError('');
 
     // Validar que los campos no estén vacíos
-    if (!email.trim() || !password.trim()) {
-      setError('Por favor ingresa tu correo electrónico y contraseña');
+    if (!emailOrPhone.trim() || !password.trim()) {
+      setError('Por favor ingresa tu correo electrónico/teléfono y contraseña');
       return;
     }
 
     setLoading(true);
 
     try {
-      const success = await AuthService.login(email, password);
+      const success = await AuthService.login(emailOrPhone, password);
       
       if (success) {
         // Obtener el ID del cliente autenticado
@@ -188,12 +188,12 @@ const Login: React.FC = () => {
               color: '#374151',
               marginBottom: '0.5rem'
             }}>
-              Correo electrónico
+              Correo electrónico o Teléfono
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              value={emailOrPhone}
+              onChange={(e) => setEmailOrPhone(e.target.value)}
               required
               style={{
                 width: '100%',
@@ -202,7 +202,7 @@ const Login: React.FC = () => {
                 borderRadius: '0.5rem',
                 fontSize: '1rem'
               }}
-              placeholder="tu@correo.com"
+              placeholder="tu@correo.com o 492 123 4567"
             />
           </div>
 
