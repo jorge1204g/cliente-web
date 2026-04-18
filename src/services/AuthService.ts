@@ -33,6 +33,7 @@ class AuthService {
       localStorage.setItem('clientId', userId);
       localStorage.setItem('clientEmail', email);
       localStorage.setItem('clientName', name);
+      localStorage.setItem('clientPhone', phone);
 
       return true;
     } catch (error) {
