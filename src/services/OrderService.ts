@@ -131,7 +131,7 @@ class OrderService {
         customerUrl: '',
         deliveryReferences: orderData.notes || '',
         customerCode: orderData.confirmationCode || confirmationCode, // Usar el código de confirmación de 4 dígitos
-        status: 'MANUAL_ASSIGNED', // Cambiar a MANUAL_ASSIGNED como los pedidos del restaurante
+        status: 'PENDING', // PENDING para que sea visible para todos los repartidores
         assignedToDeliveryId: '',
         assignedToDeliveryName: '',
         candidateDeliveryIds: [], // Array vacío = visible para todos los repartidores
