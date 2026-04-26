@@ -55,6 +55,7 @@ const TrackOrderPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [driverLocation, setDriverLocation] = useState<Location | null>(null);
+  const driverLocationRef = useRef<Location | null>(null); // Ref para acceder al valor más reciente
   const [mapLoaded, setMapLoaded] = useState(false);
   const [googleLoaded, setGoogleLoaded] = useState<any>(null);
   const [previousStatus, setPreviousStatus] = useState<string>('');
@@ -390,7 +391,13 @@ const TrackOrderPage: React.FC = () => {
       // Estados para motocicleta
       'ON_THE_WAY_TO_PICKUP',
       'ARRIVED_AT_PICKUP',
-      'ON_THE_WAY_TO_DESTINATION'
+      'ON_THE_WAY_TO_DESTINATION',
+      // Estados en minúsculas (por compatibilidad)
+      'accepted',
+      'on_the_way_to_pickup',
+      'arrived_at_pickup',
+      'on_the_way_to_destination',
+      'delivered'
     ];
     
     console.log('📊 Estado actual:', order.status);
@@ -443,7 +450,11 @@ const TrackOrderPage: React.FC = () => {
         }
         
         console.log('🔄 Actualizando estado driverLocation en React...');
-        setDriverLocation({ latitude: location.latitude, longitude: location.longitude });
+        console.log('🔍 ANTES de setDriverLocation, valor actual:', driverLocation);
+        const newLocation = { latitude: location.latitude, longitude: location.longitude };
+        setDriverLocation(newLocation);
+        driverLocationRef.current = newLocation; // Actualizar el ref también
+        console.log('✅ setDriverLocation llamado - El useEffect debería activarse');
         console.log('✅ Marcador del repartidor actualizado en el mapa');
       }
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -690,6 +701,11 @@ const TrackOrderPage: React.FC = () => {
 
   // Actualizar marcador del repartidor en tiempo real
   useEffect(() => {
+    console.log('\n=== VERIFY MARKER UPDATE ===');
+    console.log('🔍 mapInstanceRef.current:', !!mapInstanceRef.current);
+    console.log('🔍 driverLocation:', driverLocation);
+    console.log('🔍 googleLoaded:', !!googleLoaded);
+    
     if (!mapInstanceRef.current || !driverLocation || !googleLoaded) {
       if (!mapInstanceRef.current) console.warn('⚠️ Mapa no está listo todavía');
       if (!driverLocation) console.warn('⚠️ No hay ubicación del repartidor para actualizar');

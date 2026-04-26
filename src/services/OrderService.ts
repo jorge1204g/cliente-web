@@ -131,7 +131,7 @@ class OrderService {
         customerUrl: '',
         deliveryReferences: orderData.notes || '',
         customerCode: orderData.confirmationCode || confirmationCode, // Usar el código de confirmación de 4 dígitos
-        status: 'PENDING', // PENDING para que sea visible para todos los repartidores
+        status: 'WAITING_ADMIN', // WAITING_ADMIN - Solo el admin ve el pedido hasta que lo asigne
         assignedToDeliveryId: '',
         assignedToDeliveryName: '',
         candidateDeliveryIds: [], // Array vacío = visible para todos los repartidores
