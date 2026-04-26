@@ -7,7 +7,7 @@ import DeliveryTrackingMap from '../components/DeliveryTrackingMap';
 import { getDatabase, ref, onValue } from 'firebase/database';
 
 // Tipos para las pantallas
-type Screen = 'client-info' | 'pickup-location' | 'destination';
+type Screen = 'client-info' | 'pickup-location' | 'destination' | 'summary';
 
 interface DeliveryLocation {
   latitude: number;
@@ -140,12 +140,6 @@ const MotorcycleServicePage: React.FC = () => {
               setDeliveryAddressInput(place.formatted_address || '');
               setDestLat(place.geometry.location.lat());
               setDestLng(place.geometry.location.lng());
-              
-              // Calcular ruta automáticamente cuando se selecciona una dirección
-              console.log('✅ Dirección seleccionada, calculando ruta automáticamente...');
-              setTimeout(() => {
-                handleCalculateRoute();
-              }, 500);
             }
           });
         }
@@ -550,21 +544,25 @@ const MotorcycleServicePage: React.FC = () => {
               )}
             </div>
 
-            {/* Indicador de cálculo automático */}
-            {deliveryAddressInput && distance === null && price === null && (
-              <div style={{
-                padding: '1rem',
-                backgroundColor: '#fef3c7',
+            <button
+              onClick={handleCalculateRoute}
+              disabled={!deliveryAddressInput || isCalculatingRoute}
+              style={{
+                width: '100%',
+                padding: '1.25rem',
+                backgroundColor: (!deliveryAddressInput) ? '#9ca3af' : isCalculatingRoute ? '#fbbf24' : '#667eea',
+                color: 'white',
+                border: 'none',
                 borderRadius: '0.5rem',
-                border: '1px solid #fbbf24',
-                textAlign: 'center',
-                marginBottom: '1.5rem'
-              }}>
-                <p style={{ color: '#92400e', fontWeight: 'bold', margin: 0 }}>
-                  {isCalculatingRoute ? '⏳ Calculando ruta y tarifa...' : '🗺️ Selecciona una dirección para calcular automáticamente'}
-                </p>
-              </div>
-            )}
+                fontWeight: 'bold',
+                fontSize: '1.25rem',
+                cursor: (!deliveryAddressInput) ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {isCalculatingRoute ? '⏳ Calculando...' : '🗺️ Calcular Ruta y Tarifa'}
+            </button>
 
             {/* Resultado del cálculo */}
             {distance !== null && price !== null && (
@@ -631,26 +629,122 @@ const MotorcycleServicePage: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={handleCreateOrder}
-                  disabled={loading}
+                  onClick={() => setCurrentScreen('summary')}
                   style={{
                     width: '100%',
                     padding: '1.25rem',
-                    backgroundColor: loading ? '#9ca3af' : '#10b981',
+                    backgroundColor: '#10b981',
                     color: 'white',
                     border: 'none',
                     borderRadius: '0.5rem',
                     fontWeight: 'bold',
                     fontSize: '1.25rem',
-                    cursor: loading ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                     transition: 'all 0.2s'
                   }}
                 >
-                  {loading ? '⏳ Creando Viaje...' : '✅ Confirmar Viaje'}
+                  ✓ Continuar
                 </button>
               </div>
             )}
+          </div>
+        );
+
+      case 'summary':
+        return (
+          <div style={{
+            maxWidth: '800px',
+            margin: '0 auto',
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '0.75rem',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: '#10b981',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              borderBottom: '3px solid #10b981',
+              paddingBottom: '0.75rem'
+            }}>
+              📋 Resumen del Viaje
+            </h2>
+
+            <div style={{
+              backgroundColor: '#f9fafb',
+              borderRadius: '0.75rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 'bold', margin: '0 0 0.25rem 0' }}>
+                  👤 Cliente:
+                </p>
+                <p style={{ fontSize: '1rem', color: '#1f2937', margin: 0 }}>{clientName}</p>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 'bold', margin: '0 0 0.25rem 0' }}>
+                  📞 Teléfono:
+                </p>
+                <p style={{ fontSize: '1rem', color: '#1f2937', margin: 0 }}>{clientPhone}</p>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 'bold', margin: '0 0 0.25rem 0' }}>
+                  🚩 Origen:
+                </p>
+                <p style={{ fontSize: '1rem', color: '#1f2937', margin: 0 }}>
+                  {street} #{houseNumber}, {suburb}, {city}, {state} {postcode}
+                </p>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 'bold', margin: '0 0 0.25rem 0' }}>
+                  🏁 Destino:
+                </p>
+                <p style={{ fontSize: '1rem', color: '#1f2937', margin: 0 }}>{deliveryAddressInput}</p>
+              </div>
+
+              <div style={{
+                marginTop: '1.5rem',
+                paddingTop: '1.5rem',
+                borderTop: '2px solid #e5e7eb',
+                textAlign: 'center'
+              }}>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
+                  💰 Costo del viaje:
+                </p>
+                <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981', margin: 0 }}>
+                  ${price} MXN
+                </p>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0.5rem 0 0 0' }}>
+                  🗺️ Distancia: {distance?.toFixed(2)} km
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleCreateOrder}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '1.25rem',
+                backgroundColor: loading ? '#9ca3af' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: 'bold',
+                fontSize: '1.25rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+              }}
+            >
+              {loading ? '⏳ Creando Viaje...' : '✅ Confirmar Viaje'}
+            </button>
           </div>
         );
 
@@ -684,6 +778,8 @@ const MotorcycleServicePage: React.FC = () => {
               setCurrentScreen('client-info');
             } else if (currentScreen === 'destination') {
               setCurrentScreen('pickup-location');
+            } else if (currentScreen === 'summary') {
+              setCurrentScreen('destination');
             }
           }}
           style={{
@@ -711,7 +807,7 @@ const MotorcycleServicePage: React.FC = () => {
         justifyContent: 'center',
         gap: '0.5rem'
       }}>
-        {(['client-info', 'pickup-location', 'destination'] as Screen[]).map((screen, index) => (
+        {(['client-info', 'pickup-location', 'destination', 'summary'] as Screen[]).map((screen, index) => (
           <div
             key={screen}
             style={{
