@@ -28,6 +28,7 @@ const MotorcycleServicePage: React.FC = () => {
   const [clientEmail, setClientEmail] = useState(AuthService.getClientEmail() || '');
   
   // Dirección de recogida
+  const [useAlternativePickupAddress, setUseAlternativePickupAddress] = useState(false);
   const [street, setStreet] = useState('');
   const [houseNumber, setHouseNumber] = useState('');
   const [suburb, setSuburb] = useState('');
@@ -36,6 +37,8 @@ const MotorcycleServicePage: React.FC = () => {
   const [postcode, setPostcode] = useState('');
   const [pickupLat, setPickupLat] = useState<number | null>(null);
   const [pickupLng, setPickupLng] = useState<number | null>(null);
+  const [pickupAddressInput, setPickupAddressInput] = useState('');
+  const pickupAutocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
   
   // Dirección de destino
   const [deliveryAddressInput, setDeliveryAddressInput] = useState('');
@@ -153,6 +156,70 @@ const MotorcycleServicePage: React.FC = () => {
 
     initAutocomplete(0);
   }, [isGoogleLoaded, currentScreen]);
+
+  // Configurar autocompletado para recogida alternativa
+  useEffect(() => {
+    if (!isGoogleLoaded || currentScreen !== 'pickup-location' || !useAlternativePickupAddress) return;
+
+    const initPickupAutocomplete = (attempt: number = 0): boolean => {
+      const MAX_ATTEMPTS = 10;
+      
+      if (attempt >= MAX_ATTEMPTS) return false;
+
+      const pickupInput = document.getElementById('pickup-alternative-autocomplete') as HTMLInputElement;
+      
+      if (!pickupInput) {
+        setTimeout(() => initPickupAutocomplete(attempt + 1), 200);
+        return false;
+      }
+
+      if (pickupAutocompleteRef.current) return true;
+
+      const google = (window as any).google;
+      if (!google || !google.maps || !google.maps.places) {
+        setTimeout(() => initPickupAutocomplete(attempt + 1), 200);
+        return false;
+      }
+
+      try {
+        pickupAutocompleteRef.current = new google.maps.places.Autocomplete(pickupInput, {
+          componentRestrictions: { country: 'mx' },
+          fields: ['geometry', 'formatted_address', 'address_components']
+        });
+        
+        if (pickupAutocompleteRef.current) {
+          pickupAutocompleteRef.current.addListener('place_changed', () => {
+            const place = pickupAutocompleteRef.current?.getPlace();
+            if (place && place.geometry?.location) {
+              setPickupAddressInput(place.formatted_address || '');
+              setPickupLat(place.geometry.location.lat());
+              setPickupLng(place.geometry.location.lng());
+              
+              // Extraer componentes de dirección
+              if (place.address_components) {
+                place.address_components.forEach(component => {
+                  const types = component.types;
+                  if (types.includes('route')) setStreet(component.long_name);
+                  if (types.includes('street_number')) setHouseNumber(component.long_name);
+                  if (types.includes('sublocality') || types.includes('neighborhood')) setSuburb(component.long_name);
+                  if (types.includes('locality')) setCity(component.long_name);
+                  if (types.includes('administrative_area_level_1')) setState(component.long_name);
+                  if (types.includes('postal_code')) setPostcode(component.long_name);
+                });
+              }
+            }
+          });
+        }
+        
+        return true;
+      } catch (err) {
+        setTimeout(() => initPickupAutocomplete(attempt + 1), 200);
+        return false;
+      }
+    };
+
+    initPickupAutocomplete(0);
+  }, [isGoogleLoaded, currentScreen, useAlternativePickupAddress]);
 
   // 🗺️ Calcular ruta y tarifa
   const handleCalculateRoute = async () => {
@@ -303,13 +370,26 @@ const MotorcycleServicePage: React.FC = () => {
       }
       setCurrentScreen('pickup-location');
     } else if (currentScreen === 'pickup-location') {
-      if (!street || !houseNumber || !suburb || !city || !state || !postcode) {
-        setError('Por favor completa todos los campos de dirección o selecciona tu ubicación en el mapa');
-        return;
-      }
-      if (pickupLat === null || pickupLng === null) {
-        setError('Por favor selecciona tu ubicación en el mapa');
-        return;
+      if (!useAlternativePickupAddress) {
+        // Validación normal con campos manuales
+        if (!street || !houseNumber || !suburb || !city || !state || !postcode) {
+          setError('Por favor completa todos los campos de dirección o selecciona tu ubicación en el mapa');
+          return;
+        }
+        if (pickupLat === null || pickupLng === null) {
+          setError('Por favor selecciona tu ubicación en el mapa');
+          return;
+        }
+      } else {
+        // Validación con dirección alternativa
+        if (!pickupAddressInput) {
+          setError('Por favor escribe tu dirección de recogida');
+          return;
+        }
+        if (pickupLat === null || pickupLng === null) {
+          setError('Por favor selecciona una dirección sugerida por Google Maps');
+          return;
+        }
       }
       setCurrentScreen('destination');
     } else if (currentScreen === 'destination') {
@@ -444,37 +524,101 @@ const MotorcycleServicePage: React.FC = () => {
               📍 Dirección de Recogida
             </h2>
 
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
-              ℹ️ Las coordenadas se obtendrán automáticamente al seleccionar tu ubicación
-            </p>
+            {/* Casilla "Es otra dirección diferente" */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={useAlternativePickupAddress}
+                  onChange={(e) => setUseAlternativePickupAddress(e.target.checked)}
+                  style={{ width: '20px', height: '20px' }}
+                />
+                <span style={{ fontWeight: '600', color: '#374151' }}>¿Es otra dirección diferente a mi ubicación actual?</span>
+              </label>
+            </div>
 
-            <AddressSearchWithMap
-              onAddressSelect={(data) => {
-                setPickupLat(data.lat);
-                setPickupLng(data.lng);
-                setStreet(data.street);
-                setHouseNumber(data.houseNumber);
-                setSuburb(data.suburb);
-                setCity(data.city);
-                setState(data.state);
-                setPostcode(data.postcode);
-              }}
-            />
+            {!useAlternativePickupAddress ? (
+              /* Campos manuales originales con mapa */
+              <>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
+                  ℹ️ Las coordenadas se obtendrán automáticamente al seleccionar tu ubicación
+                </p>
 
-            {pickupLat && pickupLng && (
-              <div style={{
-                marginTop: '1rem',
-                padding: '1rem',
-                backgroundColor: '#d1fae5',
-                borderRadius: '0.5rem',
-                border: '1px solid #10b981'
-              }}>
-                <p style={{ color: '#065f46', fontWeight: 'bold', margin: 0 }}>
-                  ✅ Ubicación seleccionada:
-                </p>
-                <p style={{ color: '#059669', fontSize: '0.875rem', margin: '0.5rem 0 0 0' }}>
-                  📍 {pickupLat.toFixed(6)}, {pickupLng.toFixed(6)}
-                </p>
+                <AddressSearchWithMap
+                  onAddressSelect={(data) => {
+                    setPickupLat(data.lat);
+                    setPickupLng(data.lng);
+                    setStreet(data.street);
+                    setHouseNumber(data.houseNumber);
+                    setSuburb(data.suburb);
+                    setCity(data.city);
+                    setState(data.state);
+                    setPostcode(data.postcode);
+                  }}
+                />
+
+                {pickupLat && pickupLng && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#d1fae5',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #10b981'
+                  }}>
+                    <p style={{ color: '#065f46', fontWeight: 'bold', margin: 0 }}>
+                      ✅ Ubicación seleccionada:
+                    </p>
+                    <p style={{ color: '#059669', fontSize: '0.875rem', margin: '0.5rem 0 0 0' }}>
+                      📍 {pickupLat.toFixed(6)}, {pickupLng.toFixed(6)}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Nueva interfaz de búsqueda con Google Maps */
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ ...labelStyle, fontSize: '1rem', fontWeight: 'bold' }}>
+                    🏁 Escribe tu dirección de recogida:
+                  </label>
+                  <input
+                    type="text"
+                    id="pickup-alternative-autocomplete"
+                    value={pickupAddressInput}
+                    onChange={(e) => setPickupAddressInput(e.target.value)}
+                    style={{ ...inputStyle, fontSize: '1.1rem', padding: '1rem' }}
+                    placeholder="Ej: Juana Gallo, Fresnillo, Zac."
+                  />
+                  {isGoogleLoaded ? (
+                    <p style={{ fontSize: '0.85rem', color: '#10b981', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                      ✨ Escribe y selecciona una dirección sugerida por Google Maps
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: '0.85rem', color: '#f59e0b', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                      ⚠️ Cargando Google Maps...
+                    </p>
+                  )}
+                </div>
+
+                {pickupLat && pickupLng && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#d1fae5',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #10b981'
+                  }}>
+                    <p style={{ color: '#065f46', fontWeight: 'bold', margin: 0 }}>
+                      ✅ Dirección seleccionada:
+                    </p>
+                    <p style={{ color: '#059669', fontSize: '0.875rem', margin: '0.5rem 0 0 0' }}>
+                      📍 {pickupAddressInput}
+                    </p>
+                    <p style={{ color: '#059669', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>
+                      📍 Coordenadas: {pickupLat.toFixed(6)}, {pickupLng.toFixed(6)}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

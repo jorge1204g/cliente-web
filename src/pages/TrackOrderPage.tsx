@@ -47,6 +47,11 @@ interface Order {
   }>;
   riderName?: string;
   riderPhone?: string;
+  deliveryCost?: number;
+  establishmentPayment?: number;
+  rating?: number;
+  ratingComment?: string;
+  ratingTimestamp?: number;
 }
 
 const TrackOrderPage: React.FC = () => {
@@ -59,6 +64,11 @@ const TrackOrderPage: React.FC = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [googleLoaded, setGoogleLoaded] = useState<any>(null);
   const [previousStatus, setPreviousStatus] = useState<string>('');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -189,18 +199,27 @@ const TrackOrderPage: React.FC = () => {
             assignedToDeliveryId: latestOrdersOrder.assignedToDeliveryId || latestClientOrder.assignedToDeliveryId,
             assignedToDeliveryName: latestOrdersOrder.assignedToDeliveryName || latestClientOrder.assignedToDeliveryName,
             deliveryPersonName: latestOrdersOrder.deliveryPersonName || latestClientOrder.deliveryPersonName,
+            // Incluir campos de pago desde orders (usar el valor de orders si existe, incluso si es 0)
+            establishmentPayment: latestOrdersOrder.establishmentPayment !== undefined ? latestOrdersOrder.establishmentPayment : latestClientOrder.establishmentPayment,
+            deliveryCost: latestOrdersOrder.deliveryCost !== undefined ? latestOrdersOrder.deliveryCost : latestClientOrder.deliveryCost,
           };
           console.log('🔄 Combinando datos - Status:', combinedOrder.status);
+          console.log('💰 Pagos - establishmentPayment:', combinedOrder.establishmentPayment, 'deliveryCost:', combinedOrder.deliveryCost);
+          console.log('📊 Desde orders - establishmentPayment:', latestOrdersOrder.establishmentPayment, 'deliveryCost:', latestOrdersOrder.deliveryCost);
+          console.log('📊 Desde client_orders - establishmentPayment:', latestClientOrder.establishmentPayment, 'deliveryCost:', latestClientOrder.deliveryCost);
           setOrder(combinedOrder);
           setLoading(false);
         } else if (latestClientOrder) {
           // Usar client_orders como fuente principal
           console.log('✅ Usando client_orders - Status:', latestClientOrder.status);
+          console.log('💰 Pagos en client_orders - establishmentPayment:', latestClientOrder.establishmentPayment, 'deliveryCost:', latestClientOrder.deliveryCost);
           setOrder(latestClientOrder);
           setLoading(false);
         } else if (latestOrdersOrder) {
           // Fallback a orders si no hay client_orders
-          console.log('⚠️ Usando orders como fallback - Status:', latestOrdersOrder.status);
+          console.log('✅ Usando orders - Status:', latestOrdersOrder.status);
+          console.log('💰 Pagos en orders - establishmentPayment:', latestOrdersOrder.establishmentPayment, 'deliveryCost:', latestOrdersOrder.deliveryCost);
+          console.log('📦 Order object completo:', latestOrdersOrder);
           setOrder(latestOrdersOrder);
           setLoading(false);
         }
@@ -314,6 +333,9 @@ const TrackOrderPage: React.FC = () => {
                 assignedToDeliveryName: latestClientOrder.assignedToDeliveryName || foundOrder.assignedToDeliveryName,
                 riderName: latestClientOrder.riderName || foundOrder.riderName,
                 riderPhone: latestClientOrder.riderPhone || foundOrder.riderPhone,
+                // Incluir campos de pago (usar el valor de orders si existe, incluso si es 0)
+                establishmentPayment: foundOrder.establishmentPayment !== undefined ? foundOrder.establishmentPayment : latestClientOrder.establishmentPayment,
+                deliveryCost: foundOrder.deliveryCost !== undefined ? foundOrder.deliveryCost : latestClientOrder.deliveryCost,
               };
               
               console.log('🔄 Combinando datos de ambas colecciones');
@@ -351,6 +373,9 @@ const TrackOrderPage: React.FC = () => {
     if (order && order.status === 'DELIVERED' && previousStatus && previousStatus !== 'DELIVERED') {
       console.log('🎉 [CHAT] Pedido completado! Limpiando mensajes del chat...');
       
+      // Mostrar modal de calificación
+      setShowRatingModal(true);
+      
       const deliveryId = order.assignedToDeliveryId;
       const customerPhone = order.customer?.phone || order.clientPhone || phone || '';
       const orderIdToClear = order.orderCode || order.id;
@@ -373,6 +398,36 @@ const TrackOrderPage: React.FC = () => {
       setPreviousStatus(order.status);
     }
   }, [order?.status, order]);
+
+  // Función para enviar la calificación
+  const submitRating = async () => {
+    if (!order || rating === 0) return;
+    
+    setSubmittingRating(true);
+    
+    try {
+      const { ref, update } = await import('firebase/database');
+      const orderRef = ref(database, `orders/${order.id}`);
+      
+      await update(orderRef, {
+        rating: rating,
+        ratingComment: ratingComment || '',
+        ratingTimestamp: Date.now()
+      });
+      
+      console.log('✅ Calificación enviada:', rating, 'estrellas');
+      setRatingSubmitted(true);
+      
+      // Cerrar modal después de 2 segundos
+      setTimeout(() => {
+        setShowRatingModal(false);
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Error al enviar calificación:', error);
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   // Escuchar ubicacion del repartidor en tiempo real
   useEffect(() => {
@@ -1332,8 +1387,199 @@ const TrackOrderPage: React.FC = () => {
                 {new Date(order.createdAt).toLocaleString('es-MX')}
               </span>
             </div>
+            
+            {/* DEBUG: Ver datos del pedido */}
+            {console.log('🔍 DEBUG order object:', {
+              establishmentPayment: order.establishmentPayment,
+              deliveryCost: order.deliveryCost,
+              hasEstablishment: !!order.establishmentPayment,
+              hasDelivery: !!order.deliveryCost,
+              shouldShow: (order.establishmentPayment || order.deliveryCost)
+            })}
+            
+            {/* Sección de pago - Solo mostrar si hay información de pago */}
+            {(order.establishmentPayment || order.deliveryCost) && (
+              <>
+                <div style={{ 
+                  height: '1px', 
+                  backgroundColor: '#e5e7eb', 
+                  margin: '0.5rem 0'
+                }} />
+                
+                {order.establishmentPayment && order.establishmentPayment > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#6b7280' }}>💵 Cantidad pagada en establecimiento:</span>
+                    <span style={{ fontWeight: '500', color: '#374151' }}>
+                      ${order.establishmentPayment.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                
+                {order.deliveryCost && order.deliveryCost > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#6b7280' }}>🚚 Costo de envío:</span>
+                    <span style={{ fontWeight: '500', color: '#374151' }}>
+                      ${order.deliveryCost.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                
+                <div style={{ 
+                  height: '1px', 
+                  backgroundColor: '#e5e7eb', 
+                  margin: '0.5rem 0'
+                }} />
+                
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '0.5rem',
+                  border: '2px solid #22c55e'
+                }}>
+                  <span style={{ 
+                    fontWeight: '700', 
+                    fontSize: '1.125rem',
+                    color: '#16a34a'
+                  }}>
+                    💰 Total a pagar al repartidor:
+                  </span>
+                  <span style={{ 
+                    fontWeight: '800', 
+                    fontSize: '1.5rem',
+                    color: '#16a34a'
+                  }}>
+                    ${((order.establishmentPayment || 0) + (order.deliveryCost || 0)).toFixed(2)}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
+
+        {/* Modal de Calificación */}
+        {showRatingModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '400px',
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              textAlign: 'center'
+            }}>
+              {!ratingSubmitted ? (
+                <>
+                  <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🌟</div>
+                  <h2 style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: 'bold', 
+                    color: '#1f2937',
+                    marginBottom: '0.5rem'
+                  }}>
+                    ¡Pedido Entregado!
+                  </h2>
+                  <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                    ¿Cómo fue tu experiencia con el repartidor?
+                  </p>
+                  
+                  {/* Estrellas de calificación */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    gap: '0.5rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setRating(star)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '2.5rem',
+                          transition: 'transform 0.2s',
+                          transform: rating >= star ? 'scale(1.2)' : 'scale(1)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.3)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = rating >= star ? 'scale(1.2)' : 'scale(1)'}
+                      >
+                        {rating >= star ? '⭐' : '☆'}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Comentario opcional */}
+                  <textarea
+                    value={ratingComment}
+                    onChange={(e) => setRatingComment(e.target.value)}
+                    placeholder="Comentario opcional (¿qué te gustó?)"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      marginBottom: '1rem',
+                      fontSize: '0.875rem',
+                      resize: 'vertical',
+                      minHeight: '80px'
+                    }}
+                  />
+                  
+                  {/* Botón enviar */}
+                  <button
+                    onClick={submitRating}
+                    disabled={rating === 0 || submittingRating}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      backgroundColor: rating > 0 ? '#3b82f6' : '#9ca3af',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      cursor: rating > 0 ? 'pointer' : 'not-allowed',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    {submittingRating ? 'Enviando...' : 'Enviar Calificación'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
+                  <h2 style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: 'bold', 
+                    color: '#1f2937',
+                    marginBottom: '0.5rem'
+                  }}>
+                    ¡Gracias por tu calificación!
+                  </h2>
+                  <p style={{ color: '#6b7280' }}>
+                    Tu opinión nos ayuda a mejorar 🌟
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ textAlign: 'center', padding: '1rem 0' }}>

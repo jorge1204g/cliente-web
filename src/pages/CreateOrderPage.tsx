@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AuthService from '../services/AuthService';
 import OrderService from '../services/OrderService';
 import AddressSearchWithMap from '../components/AddressSearchWithMap';
 
 const CreateOrderPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Control de pasos del wizard
+  const [currentStep, setCurrentStep] = useState(1);
   
   // Datos del cliente
  const [clientName, setClientName] = useState(AuthService.getClientName() || '');
@@ -89,6 +93,13 @@ const CreateOrderPage: React.FC = () => {
 
   // 🛰️ Auto-obtener ubicación al cargar la página - TOTALMENTE AUTOMÁTICO
   useEffect(() => {
+    // Leer el tipo de servicio desde la URL
+    const serviceFromUrl = searchParams.get('service');
+    if (serviceFromUrl) {
+      console.log('🎯 Servicio seleccionado desde URL:', serviceFromUrl);
+      setServiceType(serviceFromUrl);
+    }
+
     console.log('🛰️ [CREATE ORDER] INICIANDO PROCESO AUTOMÁTICO DE UBICACIÓN...');
     
     // Cargar Google Maps para autocompletado
@@ -497,7 +508,13 @@ const CreateOrderPage: React.FC = () => {
         gap: '1rem'
       }}>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            if (currentStep > 1) {
+              setCurrentStep(currentStep - 1);
+            } else {
+              navigate(-1);
+            }
+          }}
           style={{
             background: 'rgba(255,255,255,0.2)',
             border: 'none',
@@ -508,11 +525,33 @@ const CreateOrderPage: React.FC = () => {
             fontWeight: 'bold'
           }}
         >
-          ← Regresar
+          ← {currentStep > 1 ? 'Anterior' : 'Regresar'}
         </button>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
           📦 Crear Nuevo Pedido
         </h1>
+        {/* Indicador de pasos */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+          {[1, 2, 3].map(step => (
+            <div
+              key={step}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: currentStep >= step ? 'white' : 'rgba(255,255,255,0.3)',
+                color: currentStep >= step ? '#667eea' : 'rgba(255,255,255,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '1rem'
+              }}
+            >
+              {step}
+            </div>
+          ))}
+        </div>
       </header>
 
       <form onSubmit={handleCreateOrder}>
@@ -522,1010 +561,926 @@ const CreateOrderPage: React.FC = () => {
           backgroundColor: 'white',
           padding: '2rem',
           borderRadius: '0.75rem',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          minHeight: '500px'
         }}>
           
-          {/* Botón de Datos de Prueba - OCULTO */}
-          {/* 
-          <div style={{
-            marginBottom: '2rem',
-            padding: '1rem',
-            backgroundColor: '#f0f9ff',
-            border: '2px dashed #0ea5e9',
-            borderRadius: '0.5rem',
-            textAlign: 'center'
-          }}>
-            <p style={{
-              fontSize: '0.875rem',
-              color: '#0369a1',
-              marginBottom: '0.5rem',
-              fontWeight: '600'
-            }}>
-              🧪 ¿Quieres probar rápidamente?
-            </p>
-            <button
-              type="button"
-              onClick={fillTestData}
-              style={{
-                backgroundColor: '#0ea5e9',
-                color: 'white',
-                border: 'none',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '0.5rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0ea5e9'}
-            >
-              ⚡ Llenar Datos de Prueba Automáticamente
-            </button>
-            <p style={{
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              marginTop: '0.5rem'
-            }}>
-              Llena todos los campos obligatorios con datos realistas
-            </p>
-          </div>
-          */}
+          {/* ============================================ */}
+          {/* PASO 1: Datos del Cliente + Tipo de Servicio */}
+          {/* ============================================ */}
+          {currentStep === 1 && (
+            <>
+              {/* Datos del Cliente */}
+              <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '1rem',
+                  borderBottom: '2px solid #667eea',
+                  paddingBottom: '0.5rem'
+                }}>
+                  👤 Datos del Cliente
+                </h2>
 
-          {/* Datos del Cliente */}
-          <section style={{ marginBottom: '2rem' }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #667eea',
-              paddingBottom: '0.5rem'
-            }}>
-              👤 Datos del Cliente
-            </h2>
+                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                  <div>
+                    <label style={labelStyle}>Nombre completo *</label>
+                    <input
+                      type="text"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      required
+                      style={inputStyle}
+                      placeholder="Juan Pérez"
+                    />
+                  </div>
 
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-              <div>
-                <label style={labelStyle}>Nombre completo *</label>
-                <input
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="Juan Pérez"
-                />
-              </div>
+                  <div>
+                    <label style={labelStyle}>Teléfono *</label>
+                    <input
+                      type="tel"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                      required
+                      style={inputStyle}
+                      placeholder="492 123 4567"
+                    />
+                  </div>
+                </div>
+              </section>
 
-              <div>
-                <label style={labelStyle}>Teléfono *</label>
-                <input
-                  type="tel"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="492 123 4567"
-                />
-              </div>
-            </div>
-          </section>
+              {/* Tipo de Servicio */}
+              <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '1rem',
+                  borderBottom: '2px solid #f59e0b',
+                  paddingBottom: '0.5rem'
+                }}>
+                  🎯 Tipo de Servicio
+                </h2>
 
-          {/* Tipo de Servicio - MOVIDO DESPUÉS DE DATOS DEL CLIENTE */}
-          <section style={{ marginBottom: '2rem' }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #f59e0b',
-              paddingBottom: '0.5rem'
-            }}>
-              🎯 Tipo de Servicio
-            </h2>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: '0.75rem'
-            }}>
-              {serviceTypes.map((service) => {
-                const isSelected = serviceType === service.value;
-                
-                // Si ya hay un servicio seleccionado y este no es, no lo mostrar
-                if (serviceType && !isSelected) {
-                  return null;
-                }
-                
-                return (
-                  <div
-                    key={service.value}
-                    onClick={() => {
-                      // Toggle: si ya está seleccionado, deseleccionar
-                      setServiceType(isSelected ? '' : service.value);
-                    }}
-                    style={{
-                      padding: '1rem',
-                      border: isSelected 
-                        ? '2px solid #667eea' 
-                        : '2px solid #e5e7eb',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      backgroundColor: isSelected 
-                        ? '#eff6ff' 
-                        : 'white',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
-                      {service.label.split(' ')[0]}
-                    </div>
-                    <div style={{ fontWeight: '600', color: '#1f2937' }}>
-                      {service.label.split(' ').slice(1).join(' ')}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                      {service.icon}
-                    </div>
-                    {isSelected && (
-                      <div style={{ 
-                        marginTop: '0.5rem', 
-                        fontSize: '0.75rem', 
-                        color: '#667eea',
-                        fontWeight: 'bold'
-                      }}>
-                        ✓ Seleccionado - Click para quitar
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '0.75rem'
+                }}>
+                  {serviceTypes.map((service) => {
+                    const isSelected = serviceType === service.value;
+                    
+                    return (
+                      <div
+                        key={service.value}
+                        onClick={() => {
+                          setServiceType(isSelected ? '' : service.value);
+                        }}
+                        style={{
+                          padding: '1rem',
+                          border: isSelected 
+                            ? '2px solid #667eea' 
+                            : '2px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          backgroundColor: isSelected 
+                            ? '#eff6ff' 
+                            : 'white',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
+                          {service.label.split(' ')[0]}
+                        </div>
+                        <div style={{ fontWeight: '600', color: '#1f2937' }}>
+                          {service.label.split(' ').slice(1).join(' ')}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          {service.icon}
+                        </div>
+                        {isSelected && (
+                          <div style={{ 
+                            marginTop: '0.5rem', 
+                            fontSize: '0.75rem', 
+                            color: '#667eea',
+                            fontWeight: 'bold'
+                          }}>
+                            ✓ Seleccionado
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Campos Específicos por Tipo de Servicio */}
-          {serviceType && (
-            <section style={{ marginBottom: '2rem' }}>
-              <h2 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                marginBottom: '1rem',
-                borderBottom: '2px solid #10b981',
-                paddingBottom: '0.5rem'
-              }}>
-                📋 Detalles del Servicio Seleccionado
-              </h2>
-
-              {/* 🍔 FOOD - Comida */}
-              {serviceType === 'FOOD' && (
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>🍽️ Nombre del Restaurante o Local *</label>
-                    <input
-                      type="text"
-                      value={restaurantName}
-                      onChange={(e) => setRestaurantName(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="Ej. Tacos Don Pancho, KFC, etc."
-                    />
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    ℹ️ La comida será recogida en este lugar y entregada en tu domicilio
-                  </p>
+                    );
+                  })}
                 </div>
-              )}
+              </section>
 
-              {/* ⛽ GASOLINE - Gasolina */}
-              {serviceType === 'GASOLINE' && (
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>⛽ Tipo de Combustible *</label>
-                    <select
-                      value={fuelType}
-                      onChange={(e) => setFuelType(e.target.value)}
-                      required
-                      style={inputStyle}
-                    >
-                      <option value="Magna">Magna (Verde)</option>
-                      <option value="Premium">Premium (Roja)</option>
-                      <option value="Diesel">Diesel</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>📊 Cantidad de Litros *</label>
-                    <input
-                      type="number"
-                      value={fuelLiters}
-                      onChange={(e) => setFuelLiters(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="Ej. 20"
-                      step="0.1"
-                    />
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    ℹ️ El repartidor irá a la gasolinera más cercana y entregará el combustible en tu domicilio
-                  </p>
-                </div>
-              )}
+              {/* Botón Siguiente - Paso 1 */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!clientName || !clientPhone) {
+                    setError('Por favor completa tu nombre y teléfono');
+                    return;
+                  }
+                  if (!serviceType) {
+                    setError('Por favor selecciona un tipo de servicio');
+                    return;
+                  }
+                  setError('');
+                  setCurrentStep(2);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  backgroundColor: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontWeight: 'bold',
+                  fontSize: '1.125rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                }}
+              >
+                Siguiente →
+              </button>
+            </>
+          )}
 
-              {/* 📝 STATIONERY - Papelería */}
-              {serviceType === 'STATIONERY' && (
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>📝 Artículos que Necesitas *</label>
-                    <textarea
-                      value={stationeryItems}
-                      onChange={(e) => setStationeryItems(e.target.value)}
-                      required
-                      style={{ ...inputStyle, minHeight: '80px' }}
-                      placeholder="Ej. 5 carpetas amarillas, 10 bolígrafos azules, 100 hojas carta..."
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>🖨️ Servicios de Impresión (opcional)</label>
-                    <textarea
-                      value={printServices}
-                      onChange={(e) => setPrintServices(e.target.value)}
-                      style={{ ...inputStyle, minHeight: '60px' }}
-                      placeholder="Ej. 10 impresiones blanco y negro, 5 a color, engargolados, etc."
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>🏪 ¿Alguna papelería en específico? (opcional)</label>
-                    <input
-                      type="text"
-                      value={specificStore}
-                      onChange={(e) => setSpecificStore(e.target.value)}
-                      style={inputStyle}
-                      placeholder="Ej. Office Depot, Papelería López, etc."
-                    />
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    ℹ️ Los artículos serán comprados y entregados en tu domicilio
-                  </p>
-                </div>
-              )}
+          {/* ============================================ */}
+          {/* PASO 2: Detalles del Servicio Seleccionado   */}
+          {/* ============================================ */}
+          {currentStep === 2 && (
+            <>
+              {/* Campos Específicos por Tipo de Servicio */}
+              <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '1rem',
+                  borderBottom: '2px solid #10b981',
+                  paddingBottom: '0.5rem'
+                }}>
+                  📋 Detalles del Servicio Seleccionado
+                </h2>
 
-              {/* 💊 MEDICINES - Medicamentos */}
-              {serviceType === 'MEDICINES' && (
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>💊 Medicamentos que Necesitas *</label>
-                    <textarea
-                      value={medicineList}
-                      onChange={(e) => setMedicineList(e.target.value)}
-                      required
-                      style={{ ...inputStyle, minHeight: '80px' }}
-                      placeholder="Ej. Paracetamol 500mg, Ibuprofeno 400mg, Amoxicilina 500mg..."
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>🏪 ¿Alguna farmacia en específico? (opcional)</label>
-                    <input
-                      type="text"
-                      value={pharmacyName}
-                      onChange={(e) => setPharmacyName(e.target.value)}
-                      style={inputStyle}
-                      placeholder="Ej. Farmacias Guadalajara, Del Ahorro, etc."
-                    />
-                  </div>
-                  <div>
-                    <label style={{ ...labelStyle, color: '#dc2626', fontWeight: 'bold' }}>
-                      💊 ¿Requiere receta médica?
-                    </label>
-                    <select
-                      value={hasPrescription ? 'yes' : 'no'}
-                      onChange={(e) => setHasPrescription(e.target.value === 'yes')}
-                      required
-                      style={inputStyle}
-                    >
-                      <option value="no">No, es sin receta</option>
-                      <option value="yes">Sí, requiere receta</option>
-                    </select>
-                  </div>
-                  {hasPrescription && (
+                {/* 🍔 FOOD - Comida */}
+                {serviceType === 'FOOD' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
                     <div>
-                      <label style={{ ...labelStyle, color: '#dc2626', fontWeight: 'bold' }}>
-                        📄 ¿Necesita pasar por la receta física?
-                      </label>
+                      <label style={labelStyle}>🍽️ Nombre del Restaurante o Local *</label>
+                      <input
+                        type="text"
+                        value={restaurantName}
+                        onChange={(e) => setRestaurantName(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. Tacos Don Pancho, KFC, etc."
+                      />
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      ℹ️ La comida será recogida en este lugar y entregada en tu domicilio
+                    </p>
+                  </div>
+                )}
+
+                {/* ⛽ GASOLINE - Gasolina */}
+                {serviceType === 'GASOLINE' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={labelStyle}>⛽ Tipo de Combustible *</label>
                       <select
-                        value={needToPickupPrescription ? 'yes' : 'no'}
-                        onChange={(e) => setNeedToPickupPrescription(e.target.value === 'yes')}
+                        value={fuelType}
+                        onChange={(e) => setFuelType(e.target.value)}
                         required
                         style={inputStyle}
                       >
-                        <option value="no">No, ya tengo la receta digital/foto</option>
-                        <option value="yes">Sí, necesita recoger la receta física en otro domicilio</option>
+                        <option value="Magna">Magna (Verde)</option>
+                        <option value="Premium">Premium (Roja)</option>
+                        <option value="Diesel">Diesel</option>
                       </select>
                     </div>
-                  )}
-                  {needToPickupPrescription && (
                     <div>
-                      <label style={labelStyle}>📍 Dirección donde recoger la receta *</label>
+                      <label style={labelStyle}>📊 Cantidad de Litros *</label>
                       <input
-                        type="text"
-                        value={_pickupAddress}
-                        onChange={(e) => _setPickupAddress(e.target.value)}
+                        type="number"
+                        value={fuelLiters}
+                        onChange={(e) => setFuelLiters(e.target.value)}
                         required
                         style={inputStyle}
-                        placeholder="Dirección completa donde recoger la receta"
+                        placeholder="Ej. 20"
+                        step="0.1"
                       />
                     </div>
-                  )}
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    ℹ️ Los medicamentos serán comprados y entregados en tu domicilio
-                  </p>
-                </div>
-              )}
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      ℹ️ El repartidor irá a la gasolinera más cercana y entregará el combustible en tu domicilio
+                    </p>
+                  </div>
+                )}
 
-              {/* 🍺 BEVERAGES - Cervezas y Cigarros */}
-              {serviceType === 'BEVERAGES' && (
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-                  <div>
-                    <label style={labelStyle}>🍺 Marcas de Cerveza *</label>
-                    <textarea
-                      value={beerBrands}
-                      onChange={(e) => setBeerBrands(e.target.value)}
-                      required
-                      style={{ ...inputStyle, minHeight: '60px' }}
-                      placeholder="Ej. Corona 6-pack, Modelo 12-pack, Indio 6-pack..."
-                    />
+                {/* 📝 STATIONERY - Papelería */}
+                {serviceType === 'STATIONERY' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={labelStyle}>📝 Artículos que Necesitas *</label>
+                      <textarea
+                        value={stationeryItems}
+                        onChange={(e) => setStationeryItems(e.target.value)}
+                        required
+                        style={{ ...inputStyle, minHeight: '80px' }}
+                        placeholder="Ej. 5 carpetas amarillas, 10 bolígrafos azules, 100 hojas carta..."
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🖨️ Servicios de Impresión (opcional)</label>
+                      <textarea
+                        value={printServices}
+                        onChange={(e) => setPrintServices(e.target.value)}
+                        style={{ ...inputStyle, minHeight: '60px' }}
+                        placeholder="Ej. 10 impresiones blanco y negro, 5 a color, engargolados, etc."
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🏪 ¿Alguna papelería en específico? (opcional)</label>
+                      <input
+                        type="text"
+                        value={specificStore}
+                        onChange={(e) => setSpecificStore(e.target.value)}
+                        style={inputStyle}
+                        placeholder="Ej. Office Depot, Papelería López, etc."
+                      />
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      ℹ️ Los artículos serán comprados y entregados en tu domicilio
+                    </p>
                   </div>
-                  <div>
-                    <label style={labelStyle}>🚬 Marcas de Cigarros (opcional)</label>
-                    <textarea
-                      value={cigaretteBrands}
-                      onChange={(e) => setCigaretteBrands(e.target.value)}
-                      style={{ ...inputStyle, minHeight: '60px' }}
-                      placeholder="Ej. Marlboro rojo 2 cajas, Camel blue 1 caja..."
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>📊 Cantidades Totales *</label>
-                    <input
-                      type="text"
-                      value={quantities}
-                      onChange={(e) => setQuantities(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="Ej. 3 six-packs, 2 cajetillas"
-                    />
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', gridColumn: '1 / -1' }}>
-                    ℹ️ Las cervezas y cigarros serán comprados y entregados en tu domicilio
-                  </p>
-                </div>
-              )}
+                )}
 
-              {/* 💧 WATER - Garrafones de Agua */}
-              {serviceType === 'WATER' && (
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>💧 Número de Garrafones *</label>
-                    <input
-                      type="number"
-                      value={waterBottlesCount}
-                      onChange={(e) => setWaterBottlesCount(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="Ej. 2"
-                      min="1"
-                    />
+                {/* 💊 MEDICINES - Medicamentos */}
+                {serviceType === 'MEDICINES' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={labelStyle}>💊 Medicamentos que Necesitas *</label>
+                      <textarea
+                        value={medicineList}
+                        onChange={(e) => setMedicineList(e.target.value)}
+                        required
+                        style={{ ...inputStyle, minHeight: '80px' }}
+                        placeholder="Ej. Paracetamol 500mg, Ibuprofeno 400mg, Amoxicilina 500mg..."
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🏪 ¿Alguna farmacia en específico? (opcional)</label>
+                      <input
+                        type="text"
+                        value={pharmacyName}
+                        onChange={(e) => setPharmacyName(e.target.value)}
+                        style={inputStyle}
+                        placeholder="Ej. Farmacias Guadalajara, Del Ahorro, etc."
+                      />
+                    </div>
+                    <div>
+                      <label style={{ ...labelStyle, color: '#dc2626', fontWeight: 'bold' }}>
+                        💊 ¿Requiere receta médica?
+                      </label>
+                      <select
+                        value={hasPrescription ? 'yes' : 'no'}
+                        onChange={(e) => setHasPrescription(e.target.value === 'yes')}
+                        required
+                        style={inputStyle}
+                      >
+                        <option value="no">No, es sin receta</option>
+                        <option value="yes">Sí, requiere receta</option>
+                      </select>
+                    </div>
+                    {hasPrescription && (
+                      <div>
+                        <label style={{ ...labelStyle, color: '#dc2626', fontWeight: 'bold' }}>
+                          📄 ¿Necesita pasar por la receta física?
+                        </label>
+                        <select
+                          value={needToPickupPrescription ? 'yes' : 'no'}
+                          onChange={(e) => setNeedToPickupPrescription(e.target.value === 'yes')}
+                          required
+                          style={inputStyle}
+                        >
+                          <option value="no">No, ya tengo la receta digital/foto</option>
+                          <option value="yes">Sí, necesita recoger la receta física en otro domicilio</option>
+                        </select>
+                      </div>
+                    )}
+                    {needToPickupPrescription && (
+                      <div>
+                        <label style={labelStyle}>📍 Dirección donde recoger la receta *</label>
+                        <input
+                          type="text"
+                          value={_pickupAddress}
+                          onChange={(e) => _setPickupAddress(e.target.value)}
+                          required
+                          style={inputStyle}
+                          placeholder="Dirección completa donde recoger la receta"
+                        />
+                      </div>
+                    )}
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      ℹ️ Los medicamentos serán comprados y entregados en tu domicilio
+                    </p>
                   </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    ℹ️ Los garrafones serán entregados en tu domicilio
-                  </p>
-                </div>
-              )}
+                )}
 
-              {/* 🔥 GAS - Gas LP */}
-              {serviceType === 'GAS' && (
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-                  <div>
-                    <label style={labelStyle}>🔥 Monto a Cargar ($ pesos) *</label>
-                    <input
-                      type="number"
-                      value={gasAmount}
-                      onChange={(e) => setGasAmount(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="Ej. 150"
-                      min="1"
-                    />
+                {/* 🍺 BEVERAGES - Cervezas y Cigarros */}
+                {serviceType === 'BEVERAGES' && (
+                  <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                    <div>
+                      <label style={labelStyle}>🍺 Marcas de Cerveza *</label>
+                      <textarea
+                        value={beerBrands}
+                        onChange={(e) => setBeerBrands(e.target.value)}
+                        required
+                        style={{ ...inputStyle, minHeight: '60px' }}
+                        placeholder="Ej. Corona 6-pack, Modelo 12-pack, Indio 6-pack..."
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🚬 Marcas de Cigarros (opcional)</label>
+                      <textarea
+                        value={cigaretteBrands}
+                        onChange={(e) => setCigaretteBrands(e.target.value)}
+                        style={{ ...inputStyle, minHeight: '60px' }}
+                        placeholder="Ej. Marlboro rojo 2 cajas, Camel blue 1 caja..."
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>📊 Cantidades Totales *</label>
+                      <input
+                        type="text"
+                        value={quantities}
+                        onChange={(e) => setQuantities(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. 3 six-packs, 2 cajetillas"
+                      />
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', gridColumn: '1 / -1' }}>
+                      ℹ️ Las cervezas y cigarros serán comprados y entregados en tu domicilio
+                    </p>
                   </div>
-                  <div>
-                    <label style={labelStyle}>📏 Tamaño del Tanque *</label>
-                    <select
-                      value={tankSize}
-                      onChange={(e) => setTankSize(e.target.value)}
-                      required
-                      style={inputStyle}
-                    >
-                      <option value="">Selecciona el tamaño</option>
-                      <option value="5kg">Tanque pequeño (5kg)</option>
-                      <option value="10kg">Tanque mediano (10kg)</option>
-                      <option value="20kg">Tanque grande (20kg)</option>
-                      <option value="30kg">Tanque industrial (30kg)</option>
-                    </select>
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', gridColumn: '1 / -1' }}>
-                    ℹ️ El gas será cargado en tu tanque y entregado en tu domicilio
-                  </p>
-                </div>
-              )}
+                )}
 
-              {/* 📦 PAYMENTS - Pagos o Cobros */}
-              {serviceType === 'PAYMENTS' && (
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-                  <div>
-                    <label style={labelStyle}>📄 Tipo de Pago/Servicio *</label>
-                    <select
-                      value={paymentType}
-                      onChange={(e) => setPaymentType(e.target.value)}
-                      required
-                      style={inputStyle}
-                    >
-                      <option value="">Selecciona el tipo de pago</option>
-                      <option value="CFE_Luz">CFE - Luz</option>
-                      <option value="CFE_Gas">CFE - Gas</option>
-                      <option value="Agua">Agua Potable</option>
-                      <option value="Telcel">Telcel</option>
-                      <option value="Movistar">Movistar</option>
-                      <option value="AT&T">AT&T</option>
-                      <option value="Izzi">Izzi</option>
-                      <option value="Dish">Dish</option>
-                      <option value="Sky">Sky</option>
-                      <option value="Predial">Predial</option>
-                      <option value="Seguro">Seguro</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                {/* 💧 WATER - Garrafones de Agua */}
+                {serviceType === 'WATER' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={labelStyle}>💧 Número de Garrafones *</label>
+                      <input
+                        type="number"
+                        value={waterBottlesCount}
+                        onChange={(e) => setWaterBottlesCount(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. 2"
+                        min="1"
+                      />
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      ℹ️ Los garrafones serán entregados en tu domicilio
+                    </p>
                   </div>
-                  <div>
-                    <label style={labelStyle}>🏢 Proveedor del Servicio (opcional)</label>
-                    <input
-                      type="text"
-                      value={serviceProvider}
-                      onChange={(e) => setServiceProvider(e.target.value)}
-                      style={inputStyle}
-                      placeholder="Ej. CFE, Telcel, Municipio, etc."
-                    />
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', gridColumn: '1 / -1' }}>
-                    ℹ️ El pago se realizará y el comprobante será entregado en tu domicilio
-                  </p>
-                </div>
-              )}
+                )}
 
-              {/* 🎁 FAVORS - Favores/Mandados Especiales */}
-              {serviceType === 'FAVORS' && (
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>🎁 Tipo de Favor/Regalo *</label>
-                    <select
-                      value={favorType}
-                      onChange={(e) => setFavorType(e.target.value)}
-                      required
-                      style={inputStyle}
-                    >
-                      <option value="">Selecciona el tipo de favor</option>
-                      <option value="Flores">Flores</option>
-                      <option value="Pastel">Pastel</option>
-                      <option value="Carta">Carta/Documento</option>
-                      <option value="Paquete">Paquete</option>
-                      <option value="Comida_Casera">Comida Casera</option>
-                      <option value="Llaves">Llaves</option>
-                      <option value="Ropa">Ropa</option>
-                      <option value="Herramienta">Herramienta</option>
-                      <option value="Mascota">Mascota</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                {/* 🔥 GAS - Gas LP */}
+                {serviceType === 'GAS' && (
+                  <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                    <div>
+                      <label style={labelStyle}>🔥 Monto a Cargar ($ pesos) *</label>
+                      <input
+                        type="number"
+                        value={gasAmount}
+                        onChange={(e) => setGasAmount(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. 150"
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>📏 Tamaño del Tanque *</label>
+                      <select
+                        value={tankSize}
+                        onChange={(e) => setTankSize(e.target.value)}
+                        required
+                        style={inputStyle}
+                      >
+                        <option value="">Selecciona el tamaño</option>
+                        <option value="5kg">Tanque pequeño (5kg)</option>
+                        <option value="10kg">Tanque mediano (10kg)</option>
+                        <option value="20kg">Tanque grande (20kg)</option>
+                        <option value="30kg">Tanque industrial (30kg)</option>
+                      </select>
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', gridColumn: '1 / -1' }}>
+                      ℹ️ El gas será cargado en tu tanque y entregado en tu domicilio
+                    </p>
                   </div>
-                  <div>
-                    <label style={labelStyle}>📝 Descripción Detallada *</label>
-                    <textarea
-                      value={items}
-                      onChange={(e) => setItems(e.target.value)}
-                      required
-                      style={{ ...inputStyle, minHeight: '80px' }}
-                      placeholder="Describe el favor o regalo que necesitas..."
-                    />
+                )}
+
+                {/* 📦 PAYMENTS - Pagos o Cobros */}
+                {serviceType === 'PAYMENTS' && (
+                  <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                    <div>
+                      <label style={labelStyle}>📄 Tipo de Pago/Servicio *</label>
+                      <select
+                        value={paymentType}
+                        onChange={(e) => setPaymentType(e.target.value)}
+                        required
+                        style={inputStyle}
+                      >
+                        <option value="">Selecciona el tipo de pago</option>
+                        <option value="CFE_Luz">CFE - Luz</option>
+                        <option value="CFE_Gas">CFE - Gas</option>
+                        <option value="Agua">Agua Potable</option>
+                        <option value="Telcel">Telcel</option>
+                        <option value="Movistar">Movistar</option>
+                        <option value="AT&T">AT&T</option>
+                        <option value="Izzi">Izzi</option>
+                        <option value="Dish">Dish</option>
+                        <option value="Sky">Sky</option>
+                        <option value="Predial">Predial</option>
+                        <option value="Seguro">Seguro</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>🏢 Proveedor del Servicio (opcional)</label>
+                      <input
+                        type="text"
+                        value={serviceProvider}
+                        onChange={(e) => setServiceProvider(e.target.value)}
+                        style={inputStyle}
+                        placeholder="Ej. CFE, Telcel, Municipio, etc."
+                      />
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', gridColumn: '1 / -1' }}>
+                      ℹ️ El pago se realizará y el comprobante será entregado en tu domicilio
+                    </p>
                   </div>
-                            
-                  {/* Campo de dirección de recogida manual */}
+                )}
+
+                {/* 🎁 FAVORS - Favores/Mandados Especiales */}
+                {serviceType === 'FAVORS' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={labelStyle}>🎁 Tipo de Favor/Regalo *</label>
+                      <select
+                        value={favorType}
+                        onChange={(e) => setFavorType(e.target.value)}
+                        required
+                        style={inputStyle}
+                      >
+                        <option value="">Selecciona el tipo de favor</option>
+                        <option value="Flores">Flores</option>
+                        <option value="Pastel">Pastel</option>
+                        <option value="Carta">Carta/Documento</option>
+                        <option value="Paquete">Paquete</option>
+                        <option value="Comida_Casera">Comida Casera</option>
+                        <option value="Llaves">Llaves</option>
+                        <option value="Ropa">Ropa</option>
+                        <option value="Herramienta">Herramienta</option>
+                        <option value="Mascota">Mascota</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>📝 Descripción Detallada *</label>
+                      <textarea
+                        value={items}
+                        onChange={(e) => setItems(e.target.value)}
+                        required
+                        style={{ ...inputStyle, minHeight: '80px' }}
+                        placeholder="Describe el favor o regalo que necesitas..."
+                      />
+                    </div>
+                              
+                    {/* Campo de dirección de recogida manual */}
+                    <div>
+                      <label style={{ ...labelStyle, color: '#10b981', fontWeight: 'bold' }}>
+                        📍 Dirección de Recogida (escribe manualmente) *
+                      </label>
+                      <input
+                        type="text"
+                        value={pickupLocationForFavor}
+                        onChange={(e) => setPickupLocationForFavor(e.target.value)}
+                        required
+                        style={inputStyle}
+                        placeholder="Ej. Av. Hidalgo #123, Colonia Centro, Fresnillo, Zac."
+                      />
+                      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                        💡 Escribe la dirección completa donde debe recoger el repartidor
+                      </p>
+                    </div>
+                
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      ℹ️ El repartidor recogerá en la dirección indicada y entregará en tu domicilio
+                    </p>
+                  </div>
+                )}
+
+                {/* 📝 Descripción Adicional - Campo común para todos los servicios */}
+                <div style={{ 
+                  marginTop: '1.5rem', 
+                  paddingTop: '1.5rem', 
+                  borderTop: '2px dashed #e5e7eb'
+                }}>
                   <div>
-                    <label style={{ ...labelStyle, color: '#10b981', fontWeight: 'bold' }}>
-                      📍 Dirección de Recogida (escribe manualmente) *
+                    <label style={{ ...labelStyle, color: '#6b7280' }}>
+                      💬 ¿Algo más que debamos saber sobre tu pedido? (opcional)
                     </label>
-                    <input
-                      type="text"
-                      value={pickupLocationForFavor}
-                      onChange={(e) => setPickupLocationForFavor(e.target.value)}
-                      required
-                      style={inputStyle}
-                      placeholder="Ej. Av. Hidalgo #123, Colonia Centro, Fresnillo, Zac."
+                    <textarea
+                      value={additionalDescription}
+                      onChange={(e) => setAdditionalDescription(e.target.value)}
+                      style={{ ...inputStyle, minHeight: '80px' }}
+                      placeholder="Ej. Instrucciones especiales, preferencias, detalles adicionales..."
                     />
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
-                      💡 Escribe la dirección completa donde debe recoger el repartidor
+                    <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
+                      💡 Este campo es opcional. Úsalo para dar instrucciones especiales o detalles adicionales.
                     </p>
-                  </div>
-              
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    ℹ️ El repartidor recogerá en la dirección indicada y entregará en tu domicilio
-                  </p>
-                </div>
-              )}
-
-              {/* 📝 Descripción Adicional - Campo común para todos los servicios */}
-              <div style={{ 
-                marginTop: '1.5rem', 
-                paddingTop: '1.5rem', 
-                borderTop: '2px dashed #e5e7eb'
-              }}>
-                <div>
-                  <label style={{ ...labelStyle, color: '#6b7280' }}>
-                    💬 ¿Algo más que debamos saber sobre tu pedido? (opcional)
-                  </label>
-                  <textarea
-                    value={additionalDescription}
-                    onChange={(e) => setAdditionalDescription(e.target.value)}
-                    style={{ ...inputStyle, minHeight: '80px' }}
-                    placeholder="Ej. Instrucciones especiales, preferencias, detalles adicionales..."
-                  />
-                  <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
-                    💡 Este campo es opcional. Úsalo para dar instrucciones especiales o detalles adicionales.
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Dirección de Entrega - MOVIDA DESPUÉS DE TIPO DE SERVICIO */}
-          <section style={{ marginBottom: '2rem' }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #10b981',
-              paddingBottom: '0.5rem'
-            }}>
-              📍 Dirección de Entrega
-            </h2>
-
-            {/* Casilla "Es otra dirección diferente" */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={useAlternativeAddress}
-                  onChange={(e) => handleAlternativeAddressToggle(e.target.checked)}
-                  style={{ width: '20px', height: '20px' }}
-                />
-                <span style={{ fontWeight: '600', color: '#374151' }}>¿Es otra dirección diferente a mi ubicación actual?</span>
-              </label>
-            </div>
-
-            {!useAlternativeAddress ? (
-              /* Campos manuales originales */
-              <>
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>🏠 Calle *</label>
-                    <input
-                      type="text"
-                      value={street}
-                      onChange={(e) => setStreet(e.target.value)}
-                      required={!useAlternativeAddress}
-                      style={inputStyle}
-                      placeholder="Ej. Av. Hidalgo"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>🔢 Número *</label>
-                    <input
-                      type="text"
-                      value={houseNumber}
-                      onChange={(e) => setHouseNumber(e.target.value)}
-                      required={!useAlternativeAddress}
-                      style={inputStyle}
-                      placeholder="Ej. 123"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>🏘️ Colonia *</label>
-                    <input
-                      type="text"
-                      value={suburb}
-                      onChange={(e) => setSuburb(e.target.value)}
-                      required={!useAlternativeAddress}
-                      style={inputStyle}
-                      placeholder="Ej. Centro"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>🏙️ Ciudad *</label>
-                    <input
-                      type="text"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      required={!useAlternativeAddress}
-                      style={inputStyle}
-                      placeholder="Ej. Fresnillo"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>📍 Estado *</label>
-                    <input
-                      type="text"
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      required={!useAlternativeAddress}
-                      style={inputStyle}
-                      placeholder="Ej. Zacatecas"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>📬 Código Postal *</label>
-                    <input
-                      type="text"
-                      value={postcode}
-                      onChange={(e) => setPostcode(e.target.value)}
-                      required={!useAlternativeAddress}
-                      style={inputStyle}
-                      placeholder="Ej. 99000"
-                    />
                   </div>
                 </div>
+              </section>
 
-                {/* Confirmación de Dirección - Mensaje Verde */}
-                {(street && houseNumber && suburb && city && state && postcode) && (
-                  <div style={{
-                    marginTop: '1.5rem',
-                    padding: '1.25rem',
-                    backgroundColor: '#d1fae5',
-                    borderRadius: '0.5rem',
-                    border: '2px solid #10b981',
-                    textAlign: 'center'
-                  }}>
-                    <p style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 'bold',
-                      color: '#065f46',
-                      margin: 0,
-                      lineHeight: '1.5'
-                    }}>
-                      ✅ ¡TU DIRECCIÓN ES:
-                    </p>
-                    <p style={{
-                      fontSize: '1rem',
-                      color: '#047857',
-                      margin: '0.75rem 0 0 0',
-                      fontWeight: '600'
-                    }}>
-                      {street} #{houseNumber}, {suburb}
-                      <br />
-                      {city}, {state} {postcode}
-                    </p>
-                  </div>
-                )}
-
-                {/* Coordenadas GPS */}
-                {(deliveryLat !== null || deliveryLng !== null) && (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '1rem',
-                    marginBottom: '1rem',
-                    padding: '1rem',
-                    backgroundColor: '#eff6ff',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #bfdbfe'
-                  }}>
-                    <div>
-                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                        🌎 Latitud
-                      </label>
-                      <input
-                        type="text"
-                        value={deliveryLat !== null ? deliveryLat.toString() : ''}
-                        readOnly
-                        style={{
-                          ...inputStyle,
-                          backgroundColor: '#dbeafe',
-                          border: '1px solid #93c5fd',
-                          fontWeight: '600',
-                          color: '#1e40af'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
-                        🧭 Longitud
-                      </label>
-                      <input
-                        type="text"
-                        value={deliveryLng !== null ? deliveryLng.toString() : ''}
-                        readOnly
-                        style={{
-                          ...inputStyle,
-                          backgroundColor: '#dbeafe',
-                          border: '1px solid #93c5fd',
-                          fontWeight: '600',
-                          color: '#1e40af'
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
-                  ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
-                </p>
-
-                {/* Componente de búsqueda de dirección con mapa - MOVIDO AL FINAL */}
-                <AddressSearchWithMap
-                  onAddressSelect={(data) => {
-                    setDeliveryLat(data.lat);
-                    setDeliveryLng(data.lng);
-                    setStreet(data.street);
-                    setHouseNumber(data.houseNumber);
-                    setSuburb(data.suburb);
-                    setCity(data.city);
-                    setState(data.state);
-                    setPostcode(data.postcode);
-                  }}
-                />
-              </>
-            ) : (
-              /* Nueva interfaz de búsqueda estilo motocicleta */
-              <div style={{ marginTop: '1rem' }}>
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={labelStyle}>🏁 Escribe tu dirección de entrega:</label>
-                  <input
-                    type="text"
-                    id="alternative-delivery-autocomplete"
-                    value={alternativeAddressInput}
-                    onChange={(e) => setAlternativeAddressInput(e.target.value)}
-                    required={useAlternativeAddress}
-                    style={inputStyle}
-                    placeholder="Ej: Juana Gallo, Fresnillo, Zac."
-                  />
-                  {isGoogleLoaded ? (
-                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
-                      ✨ Escribe y selecciona una dirección sugerida por Google Maps
-                    </p>
-                  ) : (
-                    <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' }}>
-                      ⚠️ Escribe tu dirección manualmente (Google Maps no disponible)
-                    </p>
-                  )}
-                </div>
-
-                {/* Mapa visualizador de la dirección seleccionada */}
-                {deliveryLat && deliveryLng && (
-                  <div style={{
-                    marginTop: '1.5rem',
-                    padding: '1.25rem',
-                    backgroundColor: '#d1fae5',
-                    borderRadius: '0.5rem',
-                    border: '2px solid #10b981',
-                    textAlign: 'center'
-                  }}>
-                    <p style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 'bold',
-                      color: '#065f46',
-                      margin: 0,
-                      lineHeight: '1.5'
-                    }}>
-                      ✅ ¡TU DIRECCIÓN ES:
-                    </p>
-                    <p style={{
-                      fontSize: '1rem',
-                      color: '#047857',
-                      margin: '0.75rem 0 0 0',
-                      fontWeight: '600'
-                    }}>
-                      {alternativeAddressInput || `${street} ${houseNumber}, ${suburb}`}
-                      <br />
-                      {city}, {state} {postcode}
-                    </p>
-                    <div style={{ marginTop: '1rem', height: '200px', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        frameBorder="0"
-                        scrolling="no"
-                        marginHeight={0}
-                        marginWidth={0}
-                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${deliveryLng - 0.005},${deliveryLat - 0.005},${deliveryLng + 0.005},${deliveryLat + 0.005}&layer=mapnik&marker=${deliveryLat},${deliveryLng}`}
-                        style={{ border: '1px solid #ccc' }}
-                      ></iframe>
-                    </div>
-                    <p style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.5rem' }}>
-                      📍 Punto exacto en el mapa
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* OCULTO - Recogida (Opcional) */}
-          {/* <section style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '1rem',
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={requiresPickup}
-                onChange={(e) => setRequiresPickup(e.target.checked)}
-                style={{ width: '20px', height: '20px' }}
-              />
-              <span style={{ fontWeight: '600', fontSize: '1rem' }}>
-                🏪 ¿Requiere recogida en otro lugar?
-              </span>
-            </label>
-
-            {requiresPickup && (
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={labelStyle}>Dirección de recogida</label>
-                  <input
-                    type="text"
-                    value={pickupAddress}
-                    onChange={(e) => setPickupAddress(e.target.value)}
-                    style={inputStyle}
-                    placeholder="Dirección donde recoger"
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Nombre del lugar</label>
-                  <input
-                    type="text"
-                    value={pickupName}
-                    onChange={(e) => setPickupName(e.target.value)}
-                    style={inputStyle}
-                    placeholder="Ej. Restaurante, Farmacia, etc."
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>URL de referencia (opcional)</label>
-                  <input
-                    type="url"
-                    value={pickupUrl}
-                    onChange={(e) => setPickupUrl(e.target.value)}
-                    style={inputStyle}
-                    placeholder="https://..."
-                  />
-                </div>
-              </div>
-            )}
-          </section> */}
-
-          {/* OCULTO - Detalles del Pedido */}
-          {/* <section style={{ marginBottom: '2rem' }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              marginBottom: '1rem',
-              borderBottom: '2px solid #8b5cf6',
-              paddingBottom: '0.5rem'
-            }}>
-              📝 Detalles del Pedido
-            </h2>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={labelStyle}>Descripción de lo que necesitas *</label>
-              <textarea
-                value={items}
-                onChange={(e) => setItems(e.target.value)}
-                required
-                style={{ ...inputStyle, minHeight: '100px' }}
-                placeholder="Describe los productos, cantidades, marcas, etc. (OBLIGATORIO)"
-              />
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={labelStyle}>Notas adicionales (opcional)</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                style={{ ...inputStyle, minHeight: '80px' }}
-                placeholder="Instrucciones especiales, referencias, etc."
-              />
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ ...labelStyle, color: '#6f42c1', fontWeight: 'bold' }}>
-                🎫 Código de Confirmación (4 dígitos)
-              </label>
-              <input
-                type="text"
-                value={confirmationCode}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, ''); // Solo números
-                  if (value.length <= 4) {
-                    setConfirmationCode(value);
-                  }
-                }}
-                maxLength={4}
-                style={{
-                  ...inputStyle,
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                  letterSpacing: '0.5rem',
-                  backgroundColor: '#f8f0ff',
-                  border: '2px solid #6f42c1'
-                }}
-                placeholder="0000"
-              />
-              <p style={{ fontSize: '0.75rem', color: '#6f42c1', marginTop: '0.5rem' }}>
-                ℹ️ Este código de 4 dígitos será necesario para que el repartidor pueda finalizar la entrega
-              </p>
-              {!confirmationCode && (
+              {/* Botones de Navegación - Paso 2 */}
+              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
                 <button
                   type="button"
-                  onClick={() => setConfirmationCode(Math.floor(1000 + Math.random() * 9000).toString())}
+                  onClick={() => setCurrentStep(1)}
                   style={{
-                    marginTop: '0.5rem',
-                    backgroundColor: '#6f42c1',
+                    padding: '1rem',
+                    backgroundColor: '#6b7280',
                     color: 'white',
                     border: 'none',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '0.375rem',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    borderRadius: '0.5rem',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    cursor: 'pointer'
                   }}
                 >
-                  🎲 Generar Código Aleatorio
+                  ← Anterior
                 </button>
-              )}
-            </div>
-          </section> */}
-
-          {/* Error Message */}
-          {error && (
-            <div style={{
-              backgroundColor: '#fee2e2',
-              border: '1px solid #fecaca',
-              color: '#991b1b',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              marginBottom: '1rem'
-            }}>
-              {error}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError('');
+                    setCurrentStep(3);
+                  }}
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: '#667eea',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </>
           )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '1rem',
-              backgroundColor: loading ? '#9ca3af' : '#667eea',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              fontWeight: 'bold',
-              fontSize: '1.125rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}
-          >
-            {loading ? '⏳ Creando Pedido...' : '✅ Crear Pedido'}
-          </button>
+          {/* ============================================ */}
+          {/* PASO 3: Dirección de Entrega                 */}
+          {/* ============================================ */}
+          {currentStep === 3 && (
+            <>
+              {/* Dirección de Entrega */}
+              <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '1rem',
+                  borderBottom: '2px solid #10b981',
+                  paddingBottom: '0.5rem'
+                }}>
+                  📍 Dirección de Entrega
+                </h2>
+
+                {/* Casilla "Es otra dirección diferente" */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={useAlternativeAddress}
+                      onChange={(e) => handleAlternativeAddressToggle(e.target.checked)}
+                      style={{ width: '20px', height: '20px' }}
+                    />
+                    <span style={{ fontWeight: '600', color: '#374151' }}>¿Es otra dirección diferente a mi ubicación actual?</span>
+                  </label>
+                </div>
+
+                {!useAlternativeAddress ? (
+                  /* Campos manuales originales */
+                  <>
+                    <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={labelStyle}>🏠 Calle *</label>
+                        <input
+                          type="text"
+                          value={street}
+                          onChange={(e) => setStreet(e.target.value)}
+                          required={!useAlternativeAddress}
+                          style={inputStyle}
+                          placeholder="Ej. Av. Hidalgo"
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>🔢 Número *</label>
+                        <input
+                          type="text"
+                          value={houseNumber}
+                          onChange={(e) => setHouseNumber(e.target.value)}
+                          required={!useAlternativeAddress}
+                          style={inputStyle}
+                          placeholder="Ej. 123"
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>🏘️ Colonia *</label>
+                        <input
+                          type="text"
+                          value={suburb}
+                          onChange={(e) => setSuburb(e.target.value)}
+                          required={!useAlternativeAddress}
+                          style={inputStyle}
+                          placeholder="Ej. Centro"
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>🏙️ Ciudad *</label>
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          required={!useAlternativeAddress}
+                          style={inputStyle}
+                          placeholder="Ej. Fresnillo"
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>📍 Estado *</label>
+                        <input
+                          type="text"
+                          value={state}
+                          onChange={(e) => setState(e.target.value)}
+                          required={!useAlternativeAddress}
+                          style={inputStyle}
+                          placeholder="Ej. Zacatecas"
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>📬 Código Postal *</label>
+                        <input
+                          type="text"
+                          value={postcode}
+                          onChange={(e) => setPostcode(e.target.value)}
+                          required={!useAlternativeAddress}
+                          style={inputStyle}
+                          placeholder="Ej. 99000"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Confirmación de Dirección - Mensaje Verde */}
+                    {(street && houseNumber && suburb && city && state && postcode) && (
+                      <div style={{
+                        marginTop: '1.5rem',
+                        padding: '1.25rem',
+                        backgroundColor: '#d1fae5',
+                        borderRadius: '0.5rem',
+                        border: '2px solid #10b981',
+                        textAlign: 'center'
+                      }}>
+                        <p style={{
+                          fontSize: '1.1rem',
+                          fontWeight: 'bold',
+                          color: '#065f46',
+                          margin: 0,
+                          lineHeight: '1.5'
+                        }}>
+                          ✅ ¡TU DIRECCIÓN ES:
+                        </p>
+                        <p style={{
+                          fontSize: '1rem',
+                          color: '#047857',
+                          margin: '0.75rem 0 0 0',
+                          fontWeight: '600'
+                        }}>
+                          {street} #{houseNumber}, {suburb}
+                          <br />
+                          {city}, {state} {postcode}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Coordenadas GPS */}
+                    {(deliveryLat !== null || deliveryLng !== null) && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: '1rem',
+                        marginBottom: '1rem',
+                        padding: '1rem',
+                        backgroundColor: '#eff6ff',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #bfdbfe'
+                      }}>
+                        <div>
+                          <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                            🌎 Latitud
+                          </label>
+                          <input
+                            type="text"
+                            value={deliveryLat !== null ? deliveryLat.toString() : ''}
+                            readOnly
+                            style={{
+                              ...inputStyle,
+                              backgroundColor: '#dbeafe',
+                              border: '1px solid #93c5fd',
+                              fontWeight: '600',
+                              color: '#1e40af'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ ...labelStyle, color: '#1e40af', fontWeight: 'bold' }}>
+                            🧭 Longitud
+                          </label>
+                          <input
+                            type="text"
+                            value={deliveryLng !== null ? deliveryLng.toString() : ''}
+                            readOnly
+                            style={{
+                              ...inputStyle,
+                              backgroundColor: '#dbeafe',
+                              border: '1px solid #93c5fd',
+                              fontWeight: '600',
+                              color: '#1e40af'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '1rem' }}>
+                      ℹ️ Las coordenadas se obtendrán automáticamente al crear el pedido
+                    </p>
+
+                    {/* Componente de búsqueda de dirección con mapa */}
+                    <AddressSearchWithMap
+                      onAddressSelect={(data) => {
+                        setDeliveryLat(data.lat);
+                        setDeliveryLng(data.lng);
+                        setStreet(data.street);
+                        setHouseNumber(data.houseNumber);
+                        setSuburb(data.suburb);
+                        setCity(data.city);
+                        setState(data.state);
+                        setPostcode(data.postcode);
+                      }}
+                    />
+                  </>
+                ) : (
+                  /* Nueva interfaz de búsqueda estilo motocicleta */
+                  <div style={{ marginTop: '1rem' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={labelStyle}>🏁 Escribe tu dirección de entrega:</label>
+                      <input
+                        type="text"
+                        id="alternative-delivery-autocomplete"
+                        value={alternativeAddressInput}
+                        onChange={(e) => setAlternativeAddressInput(e.target.value)}
+                        required={useAlternativeAddress}
+                        style={inputStyle}
+                        placeholder="Ej: Juana Gallo, Fresnillo, Zac."
+                      />
+                      {isGoogleLoaded ? (
+                        <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>
+                          ✨ Escribe y selecciona una dirección sugerida por Google Maps
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' }}>
+                          ⚠️ Escribe tu dirección manualmente (Google Maps no disponible)
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Mapa visualizador de la dirección seleccionada */}
+                    {deliveryLat && deliveryLng && (
+                      <div style={{
+                        marginTop: '1.5rem',
+                        padding: '1.25rem',
+                        backgroundColor: '#d1fae5',
+                        borderRadius: '0.5rem',
+                        border: '2px solid #10b981',
+                        textAlign: 'center'
+                      }}>
+                        <p style={{
+                          fontSize: '1.1rem',
+                          fontWeight: 'bold',
+                          color: '#065f46',
+                          margin: 0,
+                          lineHeight: '1.5'
+                        }}>
+                          ✅ ¡TU DIRECCIÓN ES:
+                        </p>
+                        <p style={{
+                          fontSize: '1rem',
+                          color: '#047857',
+                          margin: '0.75rem 0 0 0',
+                          fontWeight: '600'
+                        }}>
+                          {alternativeAddressInput || `${street} ${houseNumber}, ${suburb}`}
+                          <br />
+                          {city}, {state} {postcode}
+                        </p>
+                        <div style={{ marginTop: '1rem', height: '300px', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                          <iframe
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            scrolling="no"
+                            marginHeight={0}
+                            marginWidth={0}
+                            src={`https://maps.google.com/maps?q=${deliveryLat},${deliveryLng}&z=17&output=embed`}
+                            style={{ border: '1px solid #ccc' }}
+                          ></iframe>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.5rem' }}>
+                          📍 Punto exacto en el mapa
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {/* Error Message */}
+              {error && (
+                <div style={{
+                  backgroundColor: '#fee2e2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  padding: '1rem',
+                  borderRadius: '0.5rem',
+                  marginBottom: '1rem'
+                }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Botones de Navegación - Paso 3 */}
+              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ← Anterior
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: loading ? '#9ca3af' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: 'bold',
+                    fontSize: '1.125rem',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  {loading ? '⏳ Creando Pedido...' : '✅ Crear Pedido'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </form>
     </div>

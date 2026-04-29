@@ -52,60 +52,73 @@ const Dashboard: React.FC = () => {
       icon: '🍔',
       title: 'Comida',
       description: 'De cualquier restaurante',
-      color: '#f59e0b'
+      color: '#f59e0b',
+      serviceType: 'FOOD'
     },
     {
       icon: '⛽',
       title: 'Gasolina',
       description: 'Te llevamos tu combustible',
-      color: '#ef4444'
+      color: '#ef4444',
+      serviceType: 'GASOLINE'
     },
     {
       icon: '📝',
       title: 'Papelería',
       description: 'Todo para tu oficina',
-      color: '#3b82f6'
+      color: '#3b82f6',
+      serviceType: 'STATIONERY'
     },
     {
       icon: '💊',
       title: 'Medicamentos',
       description: 'Farmacia a domicilio',
-      color: '#10b981'
+      color: '#10b981',
+      serviceType: 'MEDICINES'
     },
     {
       icon: '🍺',
       title: 'Cervezas y Cigarros',
       description: 'Para tu fiesta',
-      color: '#8b5cf6'
+      color: '#8b5cf6',
+      serviceType: 'BEVERAGES'
     },
     {
       icon: '💧',
       title: 'Garrafones de Agua',
       description: 'Hidratación garantizada',
-      color: '#06b6d4'
+      color: '#06b6d4',
+      serviceType: 'WATER'
     },
     {
       icon: '🔥',
       title: 'Gas',
       description: 'Para tu hogar',
-      color: '#f97316'
+      color: '#f97316',
+      serviceType: 'GAS'
     },
     {
       icon: '📦',
       title: 'Pagos o Cobros',
       description: 'Gestiones rápidas',
-      color: '#ec4899'
+      color: '#ec4899',
+      serviceType: 'PAYMENTS'
     },
     {
       icon: '🎁',
       title: 'Favores',
       description: 'Directo a tu puerta',
-      color: '#6366f1'
+      color: '#6366f1',
+      serviceType: 'FAVORS'
     }
   ];
 
-  const handleCreateOrder = () => {
-    navigate('/crear-pedido');
+  const handleCreateOrder = (serviceType?: string) => {
+    if (serviceType) {
+      navigate(`/crear-pedido?service=${serviceType}`);
+    } else {
+      navigate('/crear-pedido');
+    }
   };
 
   const handleMyOrders = () => {
@@ -380,7 +393,7 @@ const Dashboard: React.FC = () => {
           {services.map((service, index) => (
             <div
               key={index}
-              onClick={handleCreateOrder}
+              onClick={() => handleCreateOrder(service.serviceType)}
               style={{
                 backgroundColor: 'white',
                 padding: '1.5rem',
